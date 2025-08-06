@@ -112,8 +112,8 @@ def main():
 
     infile = args.infile
     outfile = args.outfile
-    delay = args.delay
-    sleep = args.sleep
+    delay = float(args.delay)
+    sleep = float(args.sleep)
     output_bin_name = args.output_bin_name or path.basename(infile)
 
     try:
