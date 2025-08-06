@@ -86,6 +86,8 @@ def encode_xte(text, focus_delay, sleep):
 
     for line in text.splitlines():
         buffer = ''
+        prev_c = ''
+
         for c in line:
             if c in special_key_map:
                 if buffer:
@@ -100,8 +102,15 @@ def encode_xte(text, focus_delay, sleep):
                 else:
                     output.write(f'key {key}\n'.encode())
                 xsleep(0.05)
+                # If same as previous character, add delay
+                if c == prev_c:
+                    xsleep(0.08)  # additional delay for repeated characters
             else:
+                # If same as previous character, add delay
+                if c == prev_c:
+                    xsleep(0.08)  # additional delay for repeated characters
                 buffer += c
+            prev_c = c
 
         if buffer:
             output.write(f'str {buffer}\n'.encode())
