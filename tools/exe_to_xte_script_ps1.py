@@ -42,7 +42,7 @@ def encode_xte(text, focus_delay, sleep):
         '=': 'equal',
     }
 
-    xsleep(focus_delay)
+    usleep(f'usleep {int(focus_delay)}\n'.encode())
 
     for line in text.splitlines():
         buffer = ''
