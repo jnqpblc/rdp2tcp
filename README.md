@@ -10,13 +10,20 @@ cd [RDP2TCP FOLDER]
 
 ## build
 ```sh
+make (does both by default)
+or
 make client
-make server-mingw32
+make server
 ```
 #### on local host linux
 
 ```sh
-xfreerdp /u:[USER] /p:[PASSWORD] /v:[HOST] /rdp2tcp:[RDP2TCP FOLDER]/client/rdp2tcp 
+sudo apt install xautomation
+python3 tools/exe_to_ps1.py -i server/rdp2tcp.exe
+or
+python3 tools/exe_to_xte_script_ps1.py -i server/rdp2tcp.exe
+
+xfreerdp /u:[USER] /p:[PASSWORD] /v:[HOST] /rdp2tcp:[RDP2TCP FOLDER]/client/rdp2tcp
 ```
 
 #### on remote host windows 
