@@ -144,17 +144,18 @@ int event_wait(tunnel_t **out_tun, HANDLE *out_h)
 
 	if (ret == 0)
 		return (off == 0 ? EVT_CHAN_WRITE : EVT_CHAN_READ);
-		
-	if ((ret == 1) && (off == 0))
+
+	if ((ret == 1) && (off == 0)) {
 		return EVT_CHAN_READ;
+	}
 
-		tun = tunnel_lookup(evtid_to_tunid[off+ret]);
-		if (!tun)
-			return error("invalid tunnel event 0x%02x", evtid_to_tunid[off+ret]);
+	tun = tunnel_lookup(evtid_to_tunid[off+ret]);
+	if (!tun)
+		return error("invalid tunnel event 0x%02x", evtid_to_tunid[off+ret]);
 
-		*out_tun = tun;
-		*out_h   = all_events[off+ret];
-		return EVT_TUNNEL;
+	*out_tun = tun;
+	*out_h   = all_events[off+ret];
+	return EVT_TUNNEL;
 }
 
 
