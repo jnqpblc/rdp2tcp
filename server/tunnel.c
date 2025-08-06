@@ -67,11 +67,11 @@ static unsigned char wsa_to_r2t_error(int err)
  */
 static unsigned char tunnel_generate_id(void)
 {
-	int ok;
+	//int ok; //not used
 	unsigned char tid;
 	static unsigned char last_tid = 0xff;
 
-	ok = 1;
+	//ok = 1; //not used
 	for (tid=last_tid+1; tid!=last_tid; ++tid) {
 		if (!tunnel_lookup(tid)) {
 			last_tid = tid;
