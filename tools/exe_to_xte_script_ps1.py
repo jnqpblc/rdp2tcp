@@ -10,18 +10,28 @@ def compress_and_encode(data):
     return base64.b64encode(compressed).decode()
 
 def generate_powershell_script(encoded_data, output_filename):
-    ps_script = f'''$b64 = "{encoded_data}"
+    ps_script = f'''
+$b64 = "{encoded_data}"
 $compressed = [Convert]::FromBase64String($b64)
-$ms = New-Object System.IO.MemoryStream
-$ms.Write($compressed, 2, $compressed.Length - 2)
-$ms.Seek(0, 0) | Out-Null
 
-$ds = New-Object System.IO.Compression.DeflateStream($ms, [System.IO.Compression.CompressionMode]::Decompress)
+$ms = New-Object System.IO.MemoryStream
+$null = $ms.Write($compressed, 2, $compressed.Length - 2)
+$null = $ms.Seek(0, 0)
+
+$ds = New-Object System.IO.Compression.DeflateStream(
+    $ms,
+    [System.IO.Compression.CompressionMode]::Decompress
+)
+
 $out = New-Object System.IO.MemoryStream
 $ds.CopyTo($out)
-$ms.Close()
 
-[System.IO.File]::WriteAllBytes("$env:USERPROFILE\\{output_filename}", $out.ToArray())
+$ms.Close()
+$ds.Close()
+
+$outputPath = Join-Path $env:USERPROFILE "{output_filename}"
+[System.IO.File]::WriteAllBytes($outputPath, $out.ToArray())
+
 $out.Close()
 '''
     return ps_script
