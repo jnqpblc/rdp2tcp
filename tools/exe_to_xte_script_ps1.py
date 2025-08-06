@@ -37,10 +37,40 @@ def encode_xte(text, focus_delay, sleep):
         '\n': 'Return',
         '\t': 'Tab',
         ' ': 'space',
-        '+': 'plus',
         '/': 'slash',
+        '\\': 'backslash',
+        '.': 'period',
+        ',': 'comma',
+        ';': 'semicolon',
+        ':': 'colon',
+        '\'': 'apostrophe',
+        '"': 'quotedbl',
+        '[': 'bracketleft',
+        ']': 'bracketright',
+        '{': ('Shift_L', 'bracketleft'),
+        '}': ('Shift_L', 'bracketright'),
+        '(': ('Shift_L', '9'),
+        ')': ('Shift_L', '0'),
+        '!': ('Shift_L', '1'),
+        '@': ('Shift_L', '2'),
+        '#': ('Shift_L', '3'),
+        '$': ('Shift_L', '4'),
+        '%': ('Shift_L', '5'),
+        '^': ('Shift_L', '6'),
+        '&': ('Shift_L', '7'),
+        '*': ('Shift_L', '8'),
+        '+': ('Shift_L', 'equal'),
         '=': 'equal',
+        '-': 'minus',
+        '_': ('Shift_L', 'minus'),
+        '?': ('Shift_L', 'slash'),
+        '<': ('Shift_L', 'comma'),
+        '>': ('Shift_L', 'period'),
+        '|': ('Shift_L', 'backslash'),
+        '`': 'grave',
+        '~': ('Shift_L', 'grave'),
     }
+
 
     output.write(f'usleep {int(focus_delay * 1000000)}\n'.encode())
 
@@ -52,7 +82,13 @@ def encode_xte(text, focus_delay, sleep):
                     output.write(f'str {buffer}\n'.encode())
                     xsleep(0.08)
                     buffer = ''
-                output.write(f'key {special_key_map[c]}\n'.encode())
+                key = special_key_map[c]
+                if isinstance(key, tuple):  # Shifted key
+                    output.write(f'keydown {key[0]}\n'.encode())
+                    output.write(f'key {key[1]}\n'.encode())
+                    output.write(f'keyup {key[0]}\n'.encode())
+                else:
+                    output.write(f'key {key}\n'.encode())
                 xsleep(0.05)
             else:
                 buffer += c
