@@ -91,7 +91,7 @@ def main():
     xte_script_bytes = encode_xte(ps_script, delay, sleep)
 
     try:
-        with open(outfile, 'w') as f:
+        with open(outfile, 'wb') as f:
             f.write(xte_script_bytes)
         print(f"\n[+] Wrote the XTE script to {outfile}\n\t Run: cat {outfile} |xte")
     except Exception as e:
