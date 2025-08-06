@@ -1,14 +1,14 @@
-all: client
+all: client server
 
 client: client/rdp2tcp
 client/rdp2tcp:
-	make -C client
+        make -C client
 
-server-mingw32: server/rdp2tcp.exe
+server: server/rdp2tcp.exe
 server/rdp2tcp.exe:
-	make -C server -f Makefile.mingw32
+        make -C server -f Makefile.mingw32
 
 clean:
-	make -C client clean
-	make -C server -f Makefile.mingw32 clean
-	make -C tools clean
+        make -C client clean
+        make -C server -f Makefile.mingw32 clean
+        make -C tools clean
