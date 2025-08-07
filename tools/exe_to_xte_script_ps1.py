@@ -96,25 +96,19 @@ def encode_xte(text, focus_delay, sleep):
                     output.write(f'str {buffer}\n'.encode())
                     xsleep(0.08)
                     buffer = ''
-                if c == ':':
-                    output.write('keydown Shift_L\n'.encode())
-                    output.write('key semicolon\n'.encode())
-                    output.write('keyup Shift_L\n'.encode())
-                    xsleep(0.05)
-                elif c in special_key_map:
-                    key = special_key_map[c]
-                    if isinstance(key, tuple):  # Shifted key
-                        output.write(f'keydown {key[0]}\n'.encode())
-                        output.write(f'key {key[1]}\n'.encode())
-                        output.write(f'keyup {key[0]}\n'.encode())
-                    else:
-                        output.write(f'key {key}\n'.encode())
-                    xsleep(0.05)
+                key = special_key_map[c]
+                if isinstance(key, tuple):  # Shifted key
+                    output.write(f'keydown {key[0]}\n'.encode())
+                    output.write(f'key {key[1]}\n'.encode())
+                    output.write(f'keyup {key[0]}\n'.encode())
                 else:
-                    #buffer += c
-                    output.write(f'str {c}\n'.encode())
-                    xsleep(0.02)
-                    buffer = ''
+                    output.write(f'key {key}\n'.encode())
+                xsleep(0.05)
+            else:
+                #buffer += c
+                output.write(f'str {c}\n'.encode())
+                xsleep(0.02)
+                buffer = ''
 
         if buffer:
             output.write(f'str {buffer}\n'.encode())
