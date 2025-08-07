@@ -142,12 +142,12 @@ def main():
     b64_data = compress_and_encode(data)
     ps_script = generate_powershell_script(b64_data, output_bin_name)
     xte_script_bytes, total_time = encode_xte(ps_script, delay, sleep)
-    print(f"[+] Estimated time to execute xte script: {total_time/60:.1f} minutes ({total_time/3600:.1f} hours)")
+    print(f"\n[+] Estimated time to execute xte script: {total_time/60:.1f} minutes ({total_time/3600:.1f} hours)")
 
     try:
         with open(outfile, 'wb') as f:
             f.write(xte_script_bytes)
-        print(f"\n[+] Wrote the XTE script to {outfile}\n\t Run: cat {outfile} |xte")
+        print(f"[+] Wrote the XTE script to {outfile}\n\t Run: cat {outfile} |xte")
     except Exception as e:
         stderr.write(f"Failed to write output: {e}\n")
         exit(1)
