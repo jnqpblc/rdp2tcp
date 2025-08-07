@@ -111,10 +111,10 @@ def encode_xte(text, focus_delay, sleep):
                         output.write(f'key {key}\n'.encode())
                     xsleep(0.05)
                 else:
-                #buffer += c
-                output.write(f'str {c}\n'.encode())
-                xsleep(0.02)
-                buffer = ''
+                    #buffer += c
+                    output.write(f'str {c}\n'.encode())
+                    xsleep(0.02)
+                    buffer = ''
 
         if buffer:
             output.write(f'str {buffer}\n'.encode())
