@@ -54,7 +54,7 @@ def encode_xte(text, focus_delay, sleep):
         '\\': 'backslash',
         '.': 'period',
         ',': 'comma',
-        #';': 'semicolon',
+        ';': 'semicolon',
         ':': 'colon',
         '\'': 'apostrophe',
         '"': 'quotedbl',
@@ -89,7 +89,6 @@ def encode_xte(text, focus_delay, sleep):
 
     for line in text.splitlines():
         buffer = ''
-        #prev_c = ''
 
         for c in line:
             if c in special_key_map:
@@ -97,26 +96,25 @@ def encode_xte(text, focus_delay, sleep):
                     output.write(f'str {buffer}\n'.encode())
                     xsleep(0.08)
                     buffer = ''
-                key = special_key_map[c]
-                if isinstance(key, tuple):  # Shifted key
-                    output.write(f'keydown {key[0]}\n'.encode())
-                    output.write(f'key {key[1]}\n'.encode())
-                    output.write(f'keyup {key[0]}\n'.encode())
+                if c == ':':
+                    output.write('keydown Shift_L\n'.encode())
+                    output.write('key semicolon\n'.encode())
+                    output.write('keyup Shift_L\n'.encode())
+                    xsleep(0.05)
+                elif c in special_key_map:
+                    key = special_key_map[c]
+                    if isinstance(key, tuple):  # Shifted key
+                        output.write(f'keydown {key[0]}\n'.encode())
+                        output.write(f'key {key[1]}\n'.encode())
+                        output.write(f'keyup {key[0]}\n'.encode())
+                    else:
+                        output.write(f'key {key}\n'.encode())
+                    xsleep(0.05)
                 else:
-                    output.write(f'key {key}\n'.encode())
-                xsleep(0.05)
-                # If same as previous character, add delay
-                #if c == prev_c:
-                #    xsleep(0.08)  # additional delay for repeated characters
-            else:
-                # If same as previous character, add delay
-                #if c == prev_c:
-                #    xsleep(0.08)  # additional delay for repeated characters
                 #buffer += c
                 output.write(f'str {c}\n'.encode())
                 xsleep(0.02)
                 buffer = ''
-            #prev_c = c
 
         if buffer:
             output.write(f'str {buffer}\n'.encode())
