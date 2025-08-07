@@ -42,9 +42,13 @@ $out.Close()
 def encode_xte(text, focus_delay, sleep):
     from io import BytesIO
     output = BytesIO()
+    total_seconds = focus_delay  # Start with initial focus delay
 
     def xsleep(t):
-        output.write(f'usleep {int(t * 1000000 * sleep)}\n'.encode())
+        nonlocal total_seconds
+        adjusted = t * sleep
+        total_seconds += adjusted
+        output.write(f'usleep {int(adjusted * 1_000_000)}\n'.encode())
 
     special_key_map = {
         '\n': 'Return',
@@ -84,12 +88,10 @@ def encode_xte(text, focus_delay, sleep):
         '~': ('Shift_L', 'grave'),
     }
 
-
-    output.write(f'usleep {int(focus_delay * 1000000)}\n'.encode())
+    output.write(f'usleep {int(focus_delay * 1_000_000)}\n'.encode())
 
     for line in text.splitlines():
         buffer = ''
-
         for c in line:
             if c in special_key_map:
                 if buffer:
@@ -97,7 +99,7 @@ def encode_xte(text, focus_delay, sleep):
                     xsleep(0.08)
                     buffer = ''
                 key = special_key_map[c]
-                if isinstance(key, tuple):  # Shifted key
+                if isinstance(key, tuple):
                     output.write(f'keydown {key[0]}\n'.encode())
                     output.write(f'key {key[1]}\n'.encode())
                     output.write(f'keyup {key[0]}\n'.encode())
@@ -105,10 +107,8 @@ def encode_xte(text, focus_delay, sleep):
                     output.write(f'key {key}\n'.encode())
                 xsleep(0.05)
             else:
-                #buffer += c
                 output.write(f'str {c}\n'.encode())
                 xsleep(0.02)
-                buffer = ''
 
         if buffer:
             output.write(f'str {buffer}\n'.encode())
@@ -116,7 +116,7 @@ def encode_xte(text, focus_delay, sleep):
         output.write(b'key Return\n')
         xsleep(0.1)
 
-    return output.getvalue()
+    return output.getvalue(), total_seconds
 
 def main():
     parser = argparse.ArgumentParser(description="Compress and base64-encode a binary file into a PowerShell script that writes it back to disk.")
@@ -141,7 +141,8 @@ def main():
 
     b64_data = compress_and_encode(data)
     ps_script = generate_powershell_script(b64_data, output_bin_name)
-    xte_script_bytes = encode_xte(ps_script, delay, sleep)
+    xte_script_bytes, total_time = encode_xte(ps_script, delay, sleep)
+    print(f"[+] Estimated time to execute xte script: {total_time/60:.1f} minutes ({total_time/3600:.1f} hours)")
 
     try:
         with open(outfile, 'wb') as f:
