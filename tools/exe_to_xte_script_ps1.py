@@ -12,24 +12,27 @@ def compress_and_encode(data):
 def generate_powershell_script(encoded_data, output_filename):
     ps_script = f'''
 $b64 = "{encoded_data}"
+
 $compressed = [Convert]::FromBase64String($b64)
 
 $ms = New-Object System.IO.MemoryStream
+
 $null = $ms.Write($compressed, 2, $compressed.Length - 2)
+
 $null = $ms.Seek(0, 0)
 
-$ds = New-Object System.IO.Compression.DeflateStream(
-    $ms,
-    [System.IO.Compression.CompressionMode]::Decompress
-)
+$ds = New-Object System.IO.Compression.DeflateStream($ms,[System.IO.Compression.CompressionMode]::Decompress)
 
 $out = New-Object System.IO.MemoryStream
+
 $ds.CopyTo($out)
 
 $ms.Close()
+
 $ds.Close()
 
 $outputPath = Join-Path $env:USERPROFILE "{output_filename}"
+
 [System.IO.File]::WriteAllBytes($outputPath, $out.ToArray())
 
 $out.Close()
@@ -51,7 +54,7 @@ def encode_xte(text, focus_delay, sleep):
         '\\': 'backslash',
         '.': 'period',
         ',': 'comma',
-        ';': 'semicolon',
+        #';': 'semicolon',
         ':': 'colon',
         '\'': 'apostrophe',
         '"': 'quotedbl',
@@ -129,7 +132,7 @@ def main():
     parser.add_argument("-o", "--outfile", help="Output PowerShell script", default="server/rdp2tcp_ps1.xte")
     parser.add_argument("-b", "--output-bin-name", help="Filename to write on the target system (default: same as input file name)", default=None)
     parser.add_argument("-d", "--delay", help="Delay before typing starts (default: 10.0 sec)", default=10.0)
-    parser.add_argument("-s", "--sleep", help="Sleep multiplier between keystrokes (default: 5.0)", default=5.0)
+    parser.add_argument("-s", "--sleep", help="Sleep multiplier between keystrokes (default: 2.0)", default=2.0)
     args = parser.parse_args()
 
     infile = args.infile
