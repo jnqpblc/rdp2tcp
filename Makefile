@@ -12,3 +12,6 @@ clean:
 	make -C client clean
 	make -C server -f Makefile.mingw32 clean
 	make -C tools clean
+	rm server/*.exe
+	rm server/*.ps1
+	rm server/*.xte
