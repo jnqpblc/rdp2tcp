@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+/*
+ * This file is part of rdp2tcp
+ *
+ * Copyright (C) 2025, jnqpblc
+ *
+ */
 Simple test script for the RDP2TCP Enhanced CLI
 """
 
