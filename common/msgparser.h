@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __R2TMSG_PARSER_H__
-#define __R2TMSG_PARSER_H__
+#ifndef __RDP2TCP_MSG_PARSER_H__
+#define __RDP2TCP_MSG_PARSER_H__
 
 #include "rdp2tcp.h"
 
@@ -25,4 +25,4 @@ typedef int (*cmdhandler_t)(const r2tmsg_t *, unsigned int);
 
 int commands_parse(iobuf_t *);
 
-#endif
+#endif // __RDP2TCP_MSG_PARSER_H__
