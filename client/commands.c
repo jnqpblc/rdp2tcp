@@ -186,12 +186,21 @@ static int cmd_rconn(const r2tmsg_t *msg, unsigned int len)
 /**
  * handlers for each command
  */
+static int cmd_compress(const r2tmsg_t *msg, unsigned int len)
+{
+	// For now, just ignore compression commands to maintain compatibility
+	// TODO: Implement compression handling
+	trace_chan("compression command ignored (len=%u)", len);
+	return 0;
+}
+
 const cmdhandler_t cmd_handlers[R2TCMD_MAX] = {
-	cmd_conn,  // R2TCMD_CONN
-	cmd_close, // R2TCMD_CLOSE
-	cmd_data,  // R2TCMD_DATA
-	cmd_ping,  // R2TCMD_PING
-	cmd_bind,  // R2TCMD_BIND
-	cmd_rconn  // R2TCMD_RCONN
+	cmd_conn,     // R2TCMD_CONN
+	cmd_close,    // R2TCMD_CLOSE
+	cmd_data,     // R2TCMD_DATA
+	cmd_ping,     // R2TCMD_PING
+	cmd_bind,     // R2TCMD_BIND
+	cmd_rconn,    // R2TCMD_RCONN
+	cmd_compress  // R2TCMD_COMPRESS
 };
 
