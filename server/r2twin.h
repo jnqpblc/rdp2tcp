@@ -19,6 +19,12 @@
 #ifndef __R2TWIN_H__
 #define __R2TWIN_H__
 
+// Resource limits
+#define MAX_TUNNELS 256
+#define MAX_EVENTS 0x101
+#define MAX_HOSTNAME_LEN 255
+#define MAX_CMD_LINE_LEN 1024
+
 #include "compiler.h"
 #include "debug.h"
 #include "print.h"
