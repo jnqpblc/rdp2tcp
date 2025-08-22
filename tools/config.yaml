@@ -1,0 +1,44 @@
+# RDP2TCP Enhanced CLI Configuration
+# This file can be used with --config option
+
+# Controller settings
+controller_host: "127.0.0.1"
+controller_port: 8477
+
+# Logging configuration
+log_level: "INFO"
+log_file: "/tmp/rdp2tcp-cli.log"
+
+# Predefined tunnels
+tunnels:
+  - name: "web-server"
+    type: "tcp"
+    local_host: "127.0.0.1"
+    local_port: 8080
+    remote_host: "192.168.1.100"
+    remote_port: 80
+    enabled: false
+    compression: "gzip"
+    bandwidth_limit: 1048576  # 1MB/s
+
+  - name: "ssh-access"
+    type: "reverse"
+    local_host: "127.0.0.1"
+    local_port: 2222
+    remote_host: "192.168.1.100"
+    remote_port: 22
+    enabled: false
+    compression: "lz4"
+
+  - name: "socks-proxy"
+    type: "socks5"
+    local_host: "127.0.0.1"
+    local_port: 19050
+    enabled: true
+
+  - name: "cmd-shell"
+    type: "process"
+    local_host: "127.0.0.1"
+    local_port: 4444
+    command: "cmd.exe"
+    enabled: false  # Disabled by default for security
