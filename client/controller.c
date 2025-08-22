@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <limits.h>
 
 #ifndef PTR_DIFF
 #define PTR_DIFF(e,s) \
@@ -48,7 +49,7 @@ int controller_answer(netsock_t *cli, const char *fmt, ...)
 	assert(valid_netsock(cli) && fmt && *fmt);
 
 	va_start(va, fmt);
-	ret = vsnprintf(buf, sizeof(buf)-2, fmt, va);
+	ret = vsnprintf(buf, MAX_CONTROLLER_MSG_LEN-2, fmt, va);
 	va_end(va);
 
 	if (ret > 0) {
@@ -72,6 +73,22 @@ int controller_start(const char *host, unsigned short port)
 {
 	netsock_t *ns;
 
+	// Validate input parameters
+	if (!host || !*host) {
+		error("invalid host parameter");
+		return -1;
+	}
+	
+	if (strlen(host) > MAX_HOSTNAME_LEN) {
+		error("hostname too long");
+		return -1;
+	}
+	
+	if (port == 0) {
+		error("invalid port parameter");
+		return -1;
+	}
+	
 	assert(host && *host && port);
 	trace_ctrl("host=%s, port=%hu", host, port);
 
