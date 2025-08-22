@@ -109,6 +109,11 @@ int channel_read_event(void)
 		avail -= r;
 	} while (avail > 0);
 
+	// Validate message length to prevent buffer overflow
+	if (msglen > NETBUF_MAX_SIZE) {
+		return error("message too large: %u bytes", msglen);
+	}
+	
 	ptr = iobuf_reserve(&vc.ibuf, msglen, &avail);
 	if (!ptr)
 		return error("failed to reserve channel memory");
