@@ -19,6 +19,12 @@
 #ifndef __R2TCLIENT_H__
 #define __R2TCLIENT_H__
 
+// Resource limits
+#define MAX_SOCKETS 1024
+#define MAX_HOSTNAME_LEN 255
+#define MAX_CMD_LINE_LEN 1024
+#define MAX_CONTROLLER_MSG_LEN 256
+
 #include "debug.h"
 #include "print.h"
 #include "list.h"
