@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #ifdef DEBUG
 #include <stdio.h>
 #endif
@@ -113,6 +114,11 @@ void iobuf_consume(iobuf_t *buf, unsigned int consumed)
 	unsigned int size;
 
 	assert(valid_iobuf(buf) && (consumed > 0) && (consumed <= buf->size));
+	
+	// Additional safety check
+	if (!valid_iobuf(buf) || consumed == 0 || consumed > buf->size) {
+		return;
+	}
 
 	size = buf->size - consumed;
 	trace_iobuf("[%c] %s, consumed=%u, remaining=%u",
@@ -148,6 +154,10 @@ void *iobuf_reserve(iobuf_t *buf, unsigned int size, unsigned int *reserved)
 					buf->type, buf->name, size, avail);
 
 	if (size > avail) {
+		// Check for integer overflow
+		if (buf->size > UINT_MAX - size) {
+			return NULL;
+		}
 		bak = buf->data;
 		data = realloc(bak, buf->size + size);
 		if (!data)
