@@ -6,6 +6,7 @@ Debug script to test config loading
 import yaml
 import sys
 import os
+import argparse
 
 def debug_config(config_file):
     print(f"Loading config from: {config_file}")
@@ -36,13 +37,45 @@ def debug_config(config_file):
         print(f"      bandwidth_limit: {tunnel.get('bandwidth_limit')}")
         print()
 
-if __name__ == '__main__':
-    config_file = "config.yaml"
-    if len(sys.argv) > 1:
-        config_file = sys.argv[1]
+def main():
+    parser = argparse.ArgumentParser(
+        description='Debug RDP2TCP configuration file',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 debug-config.py
+  python3 debug-config.py --config my-config.yaml
+  python3 debug-config.py -c tools/config.yaml
+        """
+    )
     
-    if os.path.exists(config_file):
-        debug_config(config_file)
+    parser.add_argument(
+        '--config', '-c',
+        default='config.yaml',
+        help='Configuration file path (default: config.yaml)'
+    )
+    
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Verbose output'
+    )
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        print(f"Debug mode enabled")
+        print(f"Config file: {args.config}")
+        print(f"File exists: {os.path.exists(args.config)}")
+        print()
+    
+    if os.path.exists(args.config):
+        debug_config(args.config)
     else:
-        print(f"Config file {config_file} not found")
+        print(f"Error: Config file '{args.config}' not found")
+        print(f"Current directory: {os.getcwd()}")
+        print(f"Available files: {[f for f in os.listdir('.') if f.endswith(('.yaml', '.yml', '.json'))]}")
         sys.exit(1)
+
+if __name__ == '__main__':
+    main()
