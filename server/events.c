@@ -50,9 +50,17 @@ int event_add_tunnel(HANDLE evt, unsigned char id)
 
 	trace_evt("evt=%x, id=0x%02x", evt, id);
 
-	i = events_count;
-	if (i >= 0x101)
+	// Validate input parameters
+	if (!evt || evt == INVALID_HANDLE_VALUE) {
+		error("invalid event handle");
 		return -1;
+	}
+
+	i = events_count;
+	if (i >= MAX_EVENTS) {
+		error("too many events registered (max: %d)", MAX_EVENTS);
+		return -1;
+	}
 
 	all_events[i] = evt;
 	evtid_to_tunid[i] = id;
@@ -157,5 +165,3 @@ int event_wait(tunnel_t **out_tun, HANDLE *out_h)
 	*out_h   = all_events[off+ret];
 	return EVT_TUNNEL;
 }
-
-
