@@ -233,12 +233,22 @@ static int socks5_setup(netsock_t *cli)
 
 	info(0, "SOCKS5 forward request to %s:%hu", host, port);
 
+	// Check if channel is connected before requesting tunnel
+	if (!channel_is_connected()) {
+		error("RDP2TCP channel not connected - cannot establish SOCKS5 tunnel");
+		if (host && (host != ip))
+			free(host);
+		return socks_error(cli, SOCKS5_CONNREFUSED);
+	}
+	
 	tid = channel_request_tunnel(tunaf, host, port, 0);
 	if (host && (host != ip))
 		free(host);
 
-	if (tid == 0xff)
-		return -1;
+	if (tid == 0xff) {
+		error("Failed to request tunnel through RDP2TCP channel");
+		return socks_error(cli, SOCKS5_CONNREFUSED);
+	}
 
 	cli->tid   = tid;
 	cli->state = NETSTATE_CONNECTING;
@@ -278,14 +288,17 @@ void socks5_accept_event(netsock_t *srv)
 	cli = netsock_accept(srv);
 	if (cli) {
 		info(0, "accepted socks5 client %s", netaddr_print(&cli->addr, host));
-		if (channel_is_connected()) {
-			cli->type  = NETSOCK_S5CLI;
-			cli->tid   = 0xff;
-			cli->state = NETSTATE_AUTHENTICATING;
-			iobuf_init2(&cli->u.sockscli.ibuf, &cli->u.sockscli.obuf, "socks5");
-		} else {
-			error("channel not connected");
-			netsock_close(cli);
+		
+		// Initialize SOCKS5 client regardless of channel state
+		// The channel connection will be checked during the actual SOCKS5 handshake
+		cli->type  = NETSOCK_S5CLI;
+		cli->tid   = 0xff;
+		cli->state = NETSTATE_AUTHENTICATING;
+		iobuf_init2(&cli->u.sockscli.ibuf, &cli->u.sockscli.obuf, "socks5");
+		
+		// Log channel status for debugging
+		if (!channel_is_connected()) {
+			warn("SOCKS5 client accepted but RDP2TCP channel appears disconnected");
 		}
 	}
 }
