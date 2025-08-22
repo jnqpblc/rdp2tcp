@@ -49,7 +49,8 @@ int commands_parse(iobuf_t *ibuf)
 		2, // R2TCMD_DATA
 		1, // R2TCMD_PING
 		3, // R2TCMD_BIND
-		2  // R2TCMD_RCONN
+		2, // R2TCMD_RCONN
+		8  // R2TCMD_COMPRESS
 	};
 
 	assert(valid_iobuf(ibuf) && (iobuf_datalen(ibuf)>0));
@@ -108,6 +109,7 @@ const char *r2t_errors[R2TERR_MAX] = {
 	"forbidden",
 	"address not available",
 	"failed to resolve hostname",
-	"executable not found"
+	"executable not found",
+	"compression error"
 };
 
