@@ -95,11 +95,26 @@ int channel_init(const char *name)
 void channel_kill(void)
 {
 	trace_chan("");
-	CancelIo(vc.chan);
+	
+	// Cancel any pending I/O operations
+	if (vc.chan && vc.chan != INVALID_HANDLE_VALUE) {
+		CancelIo(vc.chan);
+	}
+	
 	aio_kill_forward(&vc.rio, &vc.wio);
-	CloseHandle(vc.chan);
-	// TODO why does it throw invalid handle exception ?
-	WTSVirtualChannelClose(vc.ts);
+	
+	// Close handles safely
+	if (vc.chan && vc.chan != INVALID_HANDLE_VALUE) {
+		CloseHandle(vc.chan);
+		vc.chan = INVALID_HANDLE_VALUE;
+	}
+	
+	if (vc.ts && vc.ts != INVALID_HANDLE_VALUE) {
+		WTSVirtualChannelClose(vc.ts);
+		vc.ts = INVALID_HANDLE_VALUE;
+	}
+	
+	vc.connected = 0;
 }
 
 static int on_read_completed(iobuf_t *ibuf, void *bla)
