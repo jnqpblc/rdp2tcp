@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -g 
 #		 -DDEBUG
-OBJS=	iobuf.o print.o msgparser.o nethelper.o netaddr.o
+OBJS=	iobuf.o print.o msgparser.o nethelper.o netaddr.o compress.o logger.o
 
 all: $(OBJS)
 
