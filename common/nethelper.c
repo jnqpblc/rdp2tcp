@@ -97,13 +97,13 @@ const char *net_error(int ret, int err)
 #endif
 	static const char *actions_errors[] = {
 		"failed to resolve hostname", 
-		"no valid address", 
+		"no valid address found", 
 		"failed to create socket", 
-		"failed to bind socket", 
-		"failed to setup socket", 
-		"failed to connect", 
-		"failed to receive", 
-		"failed to send"
+		"failed to bind socket to address", 
+		"failed to setup socket for listening", 
+		"failed to connect to remote host", 
+		"failed to receive data from socket", 
+		"failed to send data to socket"
 	};
 
 	x = ((ret >= NETERR_SEND) && (ret < 0)) ? actions_errors[-ret-1] : "???";
@@ -255,6 +255,7 @@ static int netres(
 #endif
 		close_sock(fd);
 		*err = nethelper_error;
+		continue;
 	}
 
 	freeaddrinfo(res);
