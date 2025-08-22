@@ -12,7 +12,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     # Import the CLI class directly from the file
     import importlib.util
-    spec = importlib.util.spec_from_file_location("rdp2tcp_cli", "rdp2tcp-cli.py")
+
+    # Try to find the CLI file
+    cli_paths = ["rdp2tcp-cli.py", "tools/rdp2tcp-cli.py"]
+    spec = None
+    
+    for path in cli_paths:
+        spec = importlib.util.spec_from_file_location("rdp2tcp_cli", path)
+        if spec is not None:
+            print(f"Found CLI file at: {path}")
+            break
+    
+    if spec is None:
+        raise ImportError("Could not find rdp2tcp-cli.py in current directory or tools/")
+
     rdp2tcp_cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(rdp2tcp_cli)
     RDP2TCPEnhancedCLI = rdp2tcp_cli.RDP2TCPEnhancedCLI
