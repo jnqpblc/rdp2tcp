@@ -162,6 +162,25 @@ int process_start(tunnel_t *tun, const char *cmd)
 	PROCESS_INFORMATION pi;
 	r2tmsg_connans_t ans;
 
+	// Validate input parameters
+	if (!tun || !cmd || !*cmd) {
+		error("invalid parameters for process_start");
+		return -1;
+	}
+
+	// Basic command validation (prevent command injection)
+	if (strlen(cmd) > MAX_CMD_LINE_LEN) {
+		error("command line too long");
+		return -1;
+	}
+
+	// Check for potentially dangerous characters
+	if (strchr(cmd, '|') || strchr(cmd, '&') || strchr(cmd, ';') || 
+		strchr(cmd, '<') || strchr(cmd, '>') || strchr(cmd, '"')) {
+		error("command contains potentially dangerous characters");
+		return -1;
+	}
+
 	trace_proc("tid=0x%02x cmd=%s", tun->id, cmd);
 
 	memset(&ans, 0, sizeof(ans));
@@ -223,4 +242,3 @@ void process_stop(tunnel_t *tun)
 	CloseHandle(tun->wfd);
 	aio_kill_forward(&tun->rio, &tun->wio);
 }
-
