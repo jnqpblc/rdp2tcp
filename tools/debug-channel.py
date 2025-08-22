@@ -72,14 +72,14 @@ def check_rdp_processes():
         else:
             print("✗ No rdesktop processes found")
 
-        # Check for xfreedrp processes
-        result = subprocess.run(['pgrep', '-f', 'xfreedrp'], 
+        # Check for xfreerdp processes
+        result = subprocess.run(['pgrep', '-f', 'xfreerdp'], 
                               capture_output=True, text=True)
         if result.returncode == 0:
             pids = result.stdout.strip().split('\n')
-            print(f"✓ Found {len(pids)} xfreedrp processes: {pids}")
+            print(f"✓ Found {len(pids)} xfreerdp processes: {pids}")
         else:
-            print("✗ No xfreedrp processes found")
+            print("✗ No xfreerdp processes found")
         
         # Check for rdp2tcp processes
         result = subprocess.run(['pgrep', '-f', 'rdp2tcp'], 
