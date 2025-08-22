@@ -489,7 +489,7 @@ class RDP2TCPEnhancedCLI:
                 import random
                 local_port = random.randint(1025, 65535)
                 
-            result = self.r2t.add_tunnel('x', ('127.0.0.1', local_port), (full_command, 0))
+            result = self.client.add_tunnel('x', ('127.0.0.1', local_port), (full_command, 0))
             self.logger.info(f"Shell tunnel created: {result}")
             
             if auto_connect:
