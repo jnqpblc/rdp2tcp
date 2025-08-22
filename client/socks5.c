@@ -234,11 +234,10 @@ static int socks5_setup(netsock_t *cli)
 	info(0, "SOCKS5 forward request to %s:%hu", host, port);
 
 	// Check if channel is connected before requesting tunnel
+	// Be more lenient - try to establish tunnel even if channel appears disconnected
 	if (!channel_is_connected()) {
-		error("RDP2TCP channel not connected - cannot establish SOCKS5 tunnel");
-		if (host && (host != ip))
-			free(host);
-		return socks_error(cli, SOCKS5_CONNREFUSED);
+		warn("RDP2TCP channel appears disconnected - attempting tunnel anyway");
+		// Don't fail immediately, try to establish the tunnel
 	}
 	
 	tid = channel_request_tunnel(tunaf, host, port, 0);
