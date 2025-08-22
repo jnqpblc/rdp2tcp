@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+/*
+ * This file is part of rdp2tcp
+ *
+ * Copyright (C) 2025, jnqpblc
+ *
+ */
 Enhanced RDP2TCP CLI Tool
 Provides a modern command-line interface for managing RDP2TCP tunnels
 """
@@ -361,6 +367,114 @@ class RDP2TCPEnhancedCLI:
                 
         self.logger.info(f"Tunnel creation complete: {success_count}/{total_count} successful")
         return success_count == total_count
+        
+    def cleanup_tunnels(self, tunnel_names: list = None) -> bool:
+        """Cleanup and close tunnels"""
+        if not self.connect():
+            return False
+            
+        try:
+            # Get current tunnel list
+            info = self.client.info()
+            tunnels = self.parse_tunnel_info(info)
+            
+            if not tunnels:
+                self.logger.info("No active tunnels found")
+                return True
+                
+            self.logger.info(f"Found {len(tunnels)} active tunnels")
+            
+            closed_count = 0
+            total_count = len(tunnels)
+            
+            for tunnel in tunnels:
+                tunnel_id = tunnel.get('tunnel_id')
+                local_address = tunnel.get('local_address', '')
+                
+                # If specific tunnel names provided, check if this tunnel should be closed
+                if tunnel_names:
+                    # Extract port from local_address (format: "host:port")
+                    try:
+                        port = int(local_address.split(':')[-1])
+                        # Find matching tunnel in config
+                        should_close = False
+                        for tunnel_data in self.config.tunnels or []:
+                            if isinstance(tunnel_data, dict):
+                                tunnel_name = tunnel_data.get('name', '')
+                                tunnel_port = tunnel_data.get('local_port')
+                            else:
+                                tunnel_name = getattr(tunnel_data, 'name', '')
+                                tunnel_port = getattr(tunnel_data, 'local_port', None)
+                                
+                            if tunnel_name in tunnel_names and tunnel_port == port:
+                                should_close = True
+                                break
+                        
+                        if not should_close:
+                            self.logger.info(f"Skipping tunnel {local_address} (not in cleanup list)")
+                            continue
+                    except (ValueError, IndexError):
+                        self.logger.warning(f"Could not parse port from {local_address}")
+                        continue
+                
+                self.logger.info(f"Closing tunnel: {local_address}")
+                
+                try:
+                    # Parse local address to get host and port
+                    if ':' in local_address:
+                        host, port_str = local_address.rsplit(':', 1)
+                        port = int(port_str)
+                    else:
+                        host = '127.0.0.1'
+                        port = int(local_address)
+                    
+                    result = self.tunnel_delete(host, port)
+                    if result:
+                        closed_count += 1
+                        self.logger.info(f"Successfully closed tunnel: {local_address}")
+                    else:
+                        self.logger.error(f"Failed to close tunnel: {local_address}")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error closing tunnel {local_address}: {e}")
+                    
+            self.logger.info(f"Tunnel cleanup complete: {closed_count}/{total_count} closed")
+            return closed_count == total_count
+            
+        except Exception as e:
+            self.logger.error(f"Error during tunnel cleanup: {e}")
+            return False
+        finally:
+            self.disconnect()
+            
+    def cleanup_all_tunnels(self) -> bool:
+        """Cleanup all active tunnels"""
+        return self.cleanup_tunnels()
+        
+    def cleanup_config_tunnels(self) -> bool:
+        """Cleanup only tunnels defined in the configuration"""
+        if not self.config.tunnels:
+            self.logger.warning("No tunnels defined in configuration")
+            return True
+            
+        tunnel_names = []
+        for tunnel_data in self.config.tunnels:
+            if isinstance(tunnel_data, dict):
+                name = tunnel_data.get('name', '')
+                enabled = tunnel_data.get('enabled', True)
+            else:
+                name = getattr(tunnel_data, 'name', '')
+                enabled = getattr(tunnel_data, 'enabled', True)
+                
+            if enabled and name:
+                tunnel_names.append(name)
+                
+        if not tunnel_names:
+            self.logger.info("No enabled tunnels found in configuration")
+            return True
+            
+        self.logger.info(f"Cleaning up {len(tunnel_names)} tunnels from configuration: {', '.join(tunnel_names)}")
+        return self.cleanup_tunnels(tunnel_names)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -373,6 +487,9 @@ Examples:
   rdp2tcp-cli monitor --duration 300
   rdp2tcp-cli config save --output config.yaml
   rdp2tcp-cli --config config.yaml config load
+  rdp2tcp-cli cleanup all
+  rdp2tcp-cli --config config.yaml cleanup config
+  rdp2tcp-cli cleanup specific --tunnels web-server ssh-access
         """
     )
     
@@ -428,6 +545,21 @@ Examples:
     
     load_parser = config_subparsers.add_parser('load', help='Load tunnels from configuration')
     
+    # Cleanup command
+    cleanup_parser = subparsers.add_parser('cleanup', help='Cleanup and close tunnels')
+    cleanup_subparsers = cleanup_parser.add_subparsers(dest='cleanup_command')
+    
+    # Cleanup all tunnels
+    cleanup_all_parser = cleanup_subparsers.add_parser('all', help='Close all active tunnels')
+    
+    # Cleanup config tunnels
+    cleanup_config_parser = cleanup_subparsers.add_parser('config', help='Close tunnels defined in configuration')
+    
+    # Cleanup specific tunnels
+    cleanup_specific_parser = cleanup_subparsers.add_parser('specific', help='Close specific tunnels')
+    cleanup_specific_parser.add_argument('--tunnels', '-t', nargs='+', required=True, 
+                                        help='Names of tunnels to close')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -478,6 +610,17 @@ Examples:
                 success = cli.config_load_tunnels()
             else:
                 config_parser.print_help()
+                return 1
+                
+        elif args.command == 'cleanup':
+            if args.cleanup_command == 'all':
+                success = cli.cleanup_all_tunnels()
+            elif args.cleanup_command == 'config':
+                success = cli.cleanup_config_tunnels()
+            elif args.cleanup_command == 'specific':
+                success = cli.cleanup_tunnels(args.tunnels)
+            else:
+                cleanup_parser.print_help()
                 return 1
                 
         else:
