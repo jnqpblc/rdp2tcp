@@ -25,6 +25,7 @@
 #include "print.h"
 
 #include <stdio.h>
+#include <string.h>
 
 extern const char *r2t_errors[R2TERR_MAX];
 
@@ -256,7 +257,7 @@ static tunnel_t *tunnel_alloc(unsigned char id)
 	if (tun) {
 		tun->id = id;
 	} else {
-		error("failed to allocate tunnel");
+		error("failed to allocate tunnel for id 0x%02x", id);
 	}
 
 	return tun;
@@ -280,7 +281,22 @@ void tunnel_create(
 	tunnel_t *tun;
 	int ret;
 
-	assert(host && *host);
+	// Validate input parameters
+	if (!host || !*host) {
+		error("invalid host parameter");
+		return;
+	}
+	
+	if (pref_af != AF_UNSPEC && pref_af != AF_INET && pref_af != AF_INET6) {
+		error("invalid address family: %d", pref_af);
+		return;
+	}
+	
+	if (strlen(host) > MAX_HOSTNAME_LEN) {
+		error("hostname too long");
+		return;
+	}
+
 	trace_tun("id=0x%02x, pref_af=%i, host=%s, port=%hu", id, pref_af, host, port);
 
 	tun = tunnel_alloc(id);
@@ -571,4 +587,3 @@ void tunnels_kill(void)
 		tunnel_close(tun);
 	}
 }
-
