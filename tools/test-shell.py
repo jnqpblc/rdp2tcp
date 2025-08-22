@@ -19,9 +19,9 @@ def test_shell_tunnel():
         current_dir = os.getcwd()
         
         cli_paths = [
-            os.path.join(script_dir, "rdp2tcp-cli.py"),  # In tools directory
-            os.path.join(current_dir, "rdp2tcp-cli.py"),  # In current directory
-            os.path.join(current_dir, "tools", "rdp2tcp-cli.py")  # In tools subdirectory
+            os.path.join(script_dir, "rdp2tcp-cli-new.py"),  # In tools directory
+            os.path.join(current_dir, "rdp2tcp-cli-new.py"),  # In current directory
+            os.path.join(current_dir, "tools", "rdp2tcp-cli-new.py")  # In tools subdirectory
         ]
         
         spec = None
