@@ -83,8 +83,23 @@ int netaddr_cmp(const netaddr_t *, const netaddr_t *);
 #define NETADDRSTR_MAXSIZE (1+INET6_ADDRSTRLEN+1+1+5+1)
 const char *netaddr_print(const netaddr_t *, char *);
 
+/**
+ * @brief Get error description for network operations
+ * @param[in] ret Return code from network function
+ * @param[in] err System error code
+ * @return String describing the error
+ */
 const char *net_error(int, int);
 
+/**
+ * @brief Resolve hostname to network address
+ * @param[in] pref_af Preferred address family (AF_INET, AF_INET6, AF_UNSPEC)
+ * @param[in] host Hostname to resolve
+ * @param[in] port Port number
+ * @param[out] addr Resolved address
+ * @param[out] err Error code on failure
+ * @return 0 on success, negative value on error
+ */
 int net_resolve(int, const char *, unsigned short, netaddr_t *, int *);
 int net_server(int, const char *, unsigned short, sock_t *, netaddr_t *,int*);
 int net_client(int, const char *, unsigned short, sock_t *, netaddr_t *,int*);
