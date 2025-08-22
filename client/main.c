@@ -166,8 +166,18 @@ int main(int argc, char **argv)
 
 		//debug(1, "channel connected: %i", channel_is_connected());
 
+		// Validate max_fd to prevent select() issues
+		if (max_fd < 0 || max_fd >= FD_SETSIZE) {
+			error("invalid file descriptor range: %d", max_fd);
+			break;
+		}
+		
 		ret = select(max_fd+1, &rfd, pwfd, NULL, ptv);
 		if (ret == -1) {
+			if (errno == EINTR) {
+				// Interrupted by signal, continue
+				continue;
+			}
 			error("select error (%s)", strerror(errno));
 			break;
 		}
