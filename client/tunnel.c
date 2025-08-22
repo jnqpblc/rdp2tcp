@@ -25,6 +25,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 
 extern struct list_head all_sockets;
 
@@ -100,6 +101,32 @@ int tunnel_add(
 	netsock_t *ns;
 	char str[NETADDRSTR_MAXSIZE*2 + 64];
 
+	// Validate input parameters
+	if (!valid_netsock(cli)) {
+		error("invalid client socket");
+		return 0;
+	}
+	
+	if (!lhost || !*lhost) {
+		error("invalid local host parameter");
+		return 0;
+	}
+	
+	if (!rhost || !*rhost) {
+		error("invalid remote host parameter");
+		return 0;
+	}
+	
+	if (strlen(lhost) > MAX_HOSTNAME_LEN || strlen(rhost) > MAX_HOSTNAME_LEN) {
+		error("hostname too long (max: %d)", MAX_HOSTNAME_LEN);
+		return 0;
+	}
+	
+	if (lport == 0) {
+		error("invalid local port");
+		return 0;
+	}
+	
 	assert(valid_netsock(cli) && lhost && *lhost && lport && rhost && *rhost);
 	trace_tun("%s:%hu --> %s:%hu", lhost, lport, rhost, rport);
 
