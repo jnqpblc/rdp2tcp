@@ -39,7 +39,8 @@
 #define R2TCMD_PING  0x03
 #define R2TCMD_BIND  0x04
 #define R2TCMD_RCONN 0x05
-#define R2TCMD_MAX   0x06
+#define R2TCMD_COMPRESS 0x06
+#define R2TCMD_MAX   0x07
 
 // address family on wire
 #define TUNAF_ANY  0x00
@@ -55,7 +56,8 @@
 #define R2TERR_NOTAVAIL    0x05
 #define R2TERR_RESOLVE     0x06
 #define R2TERR_NOTFOUND    0x07
-#define R2TERR_MAX         0x08
+#define R2TERR_COMPRESSION 0x08
+#define R2TERR_MAX         0x09
 
 /** generic rdp2tcp message header */
 PACK(struct _r2tmsg {
@@ -95,5 +97,21 @@ PACK(struct _r2tmsg_rconnreq {
 	unsigned char addr[16]; /**< tunnel address */
 });
 typedef struct _r2tmsg_rconnreq r2tmsg_rconnreq_t;
+
+// Compression types
+#define COMPRESS_NONE 0x00
+#define COMPRESS_GZIP 0x01
+#define COMPRESS_LZ4  0x02
+
+/** R2TCMD_COMPRESS message (client <--> server) */
+PACK(struct _r2tmsg_compress {
+	unsigned char cmd;      /**< R2TCMD_COMPRESS */
+	unsigned char id;       /**< tunnel identifier */
+	unsigned char algorithm; /**< compression algorithm */
+	unsigned char level;    /**< compression level (1-9 for gzip, 1-16 for lz4) */
+	unsigned int original_size; /**< original data size */
+	char data[0];          /**< compressed data */
+});
+typedef struct _r2tmsg_compress r2tmsg_compress_t;
 
 #endif
