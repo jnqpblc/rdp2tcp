@@ -301,23 +301,24 @@ void tunnel_accept_event(netsock_t *srv)
 				netaddr_print(&cli->addr, host1),
 				netaddr_print(&srv->addr, host2));
 
-		if (channel_is_connected()) {
-			tid = channel_request_tunnel(srv->u.tunsrv.raf,
-													srv->u.tunsrv.rhost,
-													srv->u.tunsrv.rport, 0);
+		// Check if channel is connected before requesting tunnel
+		// Be more lenient - try to establish tunnel even if channel appears disconnected
+		if (!channel_is_connected()) {
+			warn("RDP2TCP channel appears disconnected - attempting tunnel anyway");
+		}
+		
+		tid = channel_request_tunnel(srv->u.tunsrv.raf,
+												srv->u.tunsrv.rhost,
+												srv->u.tunsrv.rport, 0);
 
-			if (tid != 0xff) {
-				info(0, "reserved tunnel 0x%02x for %s",
-						tid, netaddr_print(&cli->addr, host1));
-				cli->tid = tid;
-				cli->state = NETSTATE_CONNECTING;
-			} else {
-				netsock_close(cli);
-			}
-
+		if (tid != 0xff) {
+			info(0, "reserved tunnel 0x%02x for %s",
+					tid, netaddr_print(&cli->addr, host1));
+			cli->tid = tid;
+			cli->state = NETSTATE_CONNECTING;
 		} else {
+			error("Failed to request tunnel through RDP2TCP channel");
 			netsock_close(cli);
-			error("channel not connected");
 		}
 	}
 }
@@ -495,4 +496,3 @@ void tunnels_restart(void)
 		}
 	}
 }
-
