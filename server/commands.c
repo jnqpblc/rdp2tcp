@@ -127,12 +127,21 @@ static int cmd_data(const r2tmsg_t *msg, unsigned int len)
 	return tunnel_write(tun, ((const char *)msg)+2, len-2);
 }
 
+static int cmd_compress(const r2tmsg_t *msg, unsigned int len)
+{
+	// For now, just ignore compression commands to maintain compatibility
+	// TODO: Implement compression handling
+	trace_chan("compression command ignored (len=%u)", len);
+	return 0;
+}
+
 const cmdhandler_t cmd_handlers[R2TCMD_MAX] = {
-	(cmdhandler_t) cmd_conn,  /* R2TCMD_CONN */
-	(cmdhandler_t) cmd_close, /* R2TCMD_CLOSE */
-	(cmdhandler_t) cmd_data,  /* R2TCMD_DATA */
+	(cmdhandler_t) cmd_conn,     /* R2TCMD_CONN */
+	(cmdhandler_t) cmd_close,    /* R2TCMD_CLOSE */
+	(cmdhandler_t) cmd_data,     /* R2TCMD_DATA */
 	NULL,
-	(cmdhandler_t) cmd_bind,  /* R2TCMD_BIND */
-	NULL
+	(cmdhandler_t) cmd_bind,     /* R2TCMD_BIND */
+	NULL,
+	(cmdhandler_t) cmd_compress  /* R2TCMD_COMPRESS */
 };
 
