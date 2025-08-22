@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 """
-/*
- * This file is part of rdp2tcp
- *
- * Copyright (C) 2025, jnqpblc
- *
- */
 Test script to verify the compression fix
 """
 
@@ -48,12 +42,12 @@ def test_socks5_tunnel():
         r2t = rdp2tcp('127.0.0.1', 8477)
         
         # Create SOCKS5 tunnel
-        result = r2t.add_tunnel('s', ('127.0.0.1', 19050), None)
+        result = r2t.add_tunnel('s', ('127.0.0.1', 19050), ('', 0))
         print(f"✓ SOCKS5 tunnel creation successful: {result}")
         
-        # List tunnels to verify
-        tunnels = r2t.list_tunnels()
-        print(f"✓ Active tunnels: {tunnels}")
+        # Get info to verify tunnel is listed
+        info = r2t.info()
+        print(f"✓ Server info: {info}")
         
         # Clean up
         r2t.del_tunnel(('127.0.0.1', 19050))
