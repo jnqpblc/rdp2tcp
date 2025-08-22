@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-Simple SOCKS5 test script
-"""
-
-'''
 /*
  * This file is part of rdp2tcp
  *
  * Copyright (C) 2025, jnqpblc
  *
  */
-'''
+
+Simple SOCKS5 test script
+"""
 
 import socket
 import struct
