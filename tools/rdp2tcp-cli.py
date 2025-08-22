@@ -85,7 +85,11 @@ class RDP2TCPEnhancedCLI:
                 # Update config with file data
                 for key, value in data.items():
                     if hasattr(config, key):
-                        setattr(config, key, value)
+                        if key == 'tunnels':
+                            # Keep tunnels as list of dicts for easier handling
+                            config.tunnels = value
+                        else:
+                            setattr(config, key, value)
                         
         return config
         
@@ -296,34 +300,64 @@ class RDP2TCPEnhancedCLI:
         success_count = 0
         total_count = len(self.config.tunnels)
         
-        for tunnel_config in self.config.tunnels:
-            if not tunnel_config.enabled:
-                self.logger.info(f"Skipping disabled tunnel: {tunnel_config.name}")
+        for tunnel_data in self.config.tunnels:
+            # Handle both dict and TunnelConfig objects
+            if isinstance(tunnel_data, dict):
+                # Convert dict to TunnelConfig-like access
+                enabled = tunnel_data.get('enabled', True)
+                name = tunnel_data.get('name', 'unnamed')
+                tunnel_type = tunnel_data.get('type')
+                local_host = tunnel_data.get('local_host', '127.0.0.1')
+                local_port = tunnel_data.get('local_port')
+                remote_host = tunnel_data.get('remote_host')
+                remote_port = tunnel_data.get('remote_port')
+                command = tunnel_data.get('command')
+                compression = tunnel_data.get('compression')
+                bandwidth_limit = tunnel_data.get('bandwidth_limit')
+            else:
+                # Assume it's a TunnelConfig object
+                enabled = getattr(tunnel_data, 'enabled', True)
+                name = getattr(tunnel_data, 'name', 'unnamed')
+                tunnel_type = getattr(tunnel_data, 'type', None)
+                local_host = getattr(tunnel_data, 'local_host', '127.0.0.1')
+                local_port = getattr(tunnel_data, 'local_port', None)
+                remote_host = getattr(tunnel_data, 'remote_host', None)
+                remote_port = getattr(tunnel_data, 'remote_port', None)
+                command = getattr(tunnel_data, 'command', None)
+                compression = getattr(tunnel_data, 'compression', None)
+                bandwidth_limit = getattr(tunnel_data, 'bandwidth_limit', None)
+            
+            if not enabled:
+                self.logger.info(f"Skipping disabled tunnel: {name}")
                 continue
                 
-            self.logger.info(f"Creating tunnel: {tunnel_config.name}")
+            if not tunnel_type or not local_port:
+                self.logger.error(f"Invalid tunnel configuration for {name}: missing type or local_port")
+                continue
+                
+            self.logger.info(f"Creating tunnel: {name}")
             
             try:
                 success = self.tunnel_create(
-                    name=tunnel_config.name,
-                    tunnel_type=tunnel_config.type,
-                    local_host=tunnel_config.local_host,
-                    local_port=tunnel_config.local_port,
-                    remote_host=tunnel_config.remote_host,
-                    remote_port=tunnel_config.remote_port,
-                    command=tunnel_config.command,
-                    compression=tunnel_config.compression,
-                    bandwidth_limit=tunnel_config.bandwidth_limit
+                    name=name,
+                    tunnel_type=tunnel_type,
+                    local_host=local_host,
+                    local_port=local_port,
+                    remote_host=remote_host,
+                    remote_port=remote_port,
+                    command=command,
+                    compression=compression,
+                    bandwidth_limit=bandwidth_limit
                 )
                 
                 if success:
                     success_count += 1
-                    self.logger.info(f"Successfully created tunnel: {tunnel_config.name}")
+                    self.logger.info(f"Successfully created tunnel: {name}")
                 else:
-                    self.logger.error(f"Failed to create tunnel: {tunnel_config.name}")
+                    self.logger.error(f"Failed to create tunnel: {name}")
                     
             except Exception as e:
-                self.logger.error(f"Error creating tunnel {tunnel_config.name}: {e}")
+                self.logger.error(f"Error creating tunnel {name}: {e}")
                 
         self.logger.info(f"Tunnel creation complete: {success_count}/{total_count} successful")
         return success_count == total_count
