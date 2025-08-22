@@ -45,8 +45,8 @@ void netaddr_set(int af, const void *addr, unsigned short port, netaddr_t *a)
 		a->ip4.sin_port = ntohs(port);
 		memcpy(&a->ip4.sin_addr, addr, 4);
 	} else {
-		a->ip6.sin6_family = AF_INET;
-		a->ip6.sin6_port = ntohs(port);
+		a->ip6.sin6_family = AF_INET6;
+		a->ip6.sin6_port = htons(port);
 		memcpy(&a->ip6.sin6_addr, addr, 16);
 	}
 }
@@ -141,8 +141,7 @@ const char *netaddr_print(const netaddr_t *addr, char *buf)
 	if (netaddr_af(addr) == AF_INET6)
 		*ptr++ = ']';
 
-	snprintf(ptr, 7, ":%hu", ntohs(port));
+	snprintf(ptr, NETADDRSTR_MAXSIZE - (ptr - buf), ":%hu", ntohs(port));
 
 	return (const char*) buf;
 }
-
