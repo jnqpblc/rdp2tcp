@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 """
-/*
- * This file is part of rdp2tcp
- *
- * Copyright (C) 2025, jnqpblc
- *
- */
 Simple test script for the RDP2TCP Enhanced CLI
 """
 
@@ -16,7 +10,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from rdp2tcp_cli import RDP2TCPEnhancedCLI
+    # Import the CLI class directly from the file
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("rdp2tcp_cli", "rdp2tcp-cli.py")
+    rdp2tcp_cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rdp2tcp_cli)
+    RDP2TCPEnhancedCLI = rdp2tcp_cli.RDP2TCPEnhancedCLI
     
     print("Testing RDP2TCP Enhanced CLI...")
     
