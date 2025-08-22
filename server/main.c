@@ -108,7 +108,9 @@ int main(int argc, char **argv)
 		// I/O loop
 		while (ret >= 0) {
 
-			switch (event_wait(&tun, &h)) {
+			int event_type = event_wait(&tun, &h);
+			
+			switch (event_type) {
 
 				case EVT_CHAN_WRITE: // virtual channel outgoing data
 					debug(0, "EVT_CHAN_WRITE");
@@ -126,6 +128,11 @@ int main(int argc, char **argv)
 
 				case EVT_TUNNEL: // tcp tunnel incoming/outgoing data
 					debug(0, "EVT_TUNNEL");
+					if (!tun) {
+						error("tunnel event received but tunnel is NULL");
+						ret = -1;
+						break;
+					}
 					ret = tunnel_event(tun, h);
 					break;
 
@@ -139,6 +146,7 @@ int main(int argc, char **argv)
 					break;
 
 				default:
+					error("unknown event type: %d", event_type);
 					ret = -1;
 
 			}
