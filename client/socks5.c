@@ -125,8 +125,12 @@ static int socks5_setup(netsock_t *cli)
 		return 1;
 
 	buf = iobuf_dataptr(ibuf);
-	if (buf[0] != SOCKS5_VERSION)
-		return error("SOCKS5 protocol version not supported (0x%02x)", buf[0]);
+	// Validate SOCKS5 version
+	if (buf[0] != SOCKS5_VERSION) {
+		error("SOCKS5 protocol version not supported (0x%02x)", buf[0]);
+		tunnel_close(cli, 1);
+		return -1;
+	}
 
 	if (cli->state == NETSTATE_AUTHENTICATING) {
 
