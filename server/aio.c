@@ -102,7 +102,26 @@ int aio_read(
 	DWORD len, r;
 	unsigned int avail, min_io_size;
 
-	assert(valid_aio(rio) && name && *name && callback);
+	// Validate input parameters
+	if (!valid_aio(rio)) {
+		error("invalid aio structure");
+		return -1;
+	}
+	
+	if (!name || !*name) {
+		error("invalid name parameter");
+		return -1;
+	}
+	
+	if (!callback) {
+		error("invalid callback function");
+		return -1;
+	}
+	
+	if (!fd || fd == INVALID_HANDLE_VALUE) {
+		error("invalid file handle");
+		return -1;
+	}
 	ibuf = &rio->buf;
 	min_io_size = rio->min_io_size;
 	len = 0;
