@@ -10,7 +10,40 @@ import subprocess
 def test_shell_tunnel():
     """Test the shell tunnel functionality"""
     try:
-        from rdp2tcp_cli import RDP2TCPEnhancedCLI
+        # Import the CLI class using the same method as test-cli.py
+        import importlib.util
+        import os
+        
+        # Try to find the CLI file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        current_dir = os.getcwd()
+        
+        cli_paths = [
+            os.path.join(script_dir, "rdp2tcp-cli.py"),  # In tools directory
+            os.path.join(current_dir, "rdp2tcp-cli.py"),  # In current directory
+            os.path.join(current_dir, "tools", "rdp2tcp-cli.py")  # In tools subdirectory
+        ]
+        
+        spec = None
+        found_path = None
+        
+        for path in cli_paths:
+            if os.path.exists(path):
+                spec = importlib.util.spec_from_file_location("rdp2tcp_cli", path)
+                if spec is not None:
+                    found_path = path
+                    print(f"Found CLI file at: {path}")
+                    break
+        
+        if spec is None:
+            print(f"Available paths checked:")
+            for path in cli_paths:
+                print(f"  - {path} (exists: {os.path.exists(path)})")
+            raise ImportError("Could not find rdp2tcp-cli.py")
+            
+        rdp2tcp_cli = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rdp2tcp_cli)
+        RDP2TCPEnhancedCLI = rdp2tcp_cli.RDP2TCPEnhancedCLI
         
         print("Testing Shell Tunnel Functionality")
         print("="*40)
