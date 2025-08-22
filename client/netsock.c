@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 
 /**
  * all network sockets double-linked list
@@ -118,19 +119,44 @@ netsock_t *netsock_alloc(
 {
 	netsock_t *ns;
 
+	// Check for integer overflow in allocation size
+	if (extra_size > SIZE_MAX - sizeof(*ns)) {
+		error("allocation size too large");
+		if (cli)
+			controller_answer(cli, "allocation size too large");
+		close(fd);
+		return NULL;
+	}
+
 	ns = calloc(1, sizeof(*ns)+extra_size);
 	if (ns) {
 		ns->type = NETSOCK_UNDEF;
-		ns->type = NETSTATE_INIT;
+		ns->state = NETSTATE_INIT;
 		ns->tid  = 0xff;
 		ns->fd = fd;
 		if (addr)
 			memcpy(&ns->addr, addr, sizeof(*addr));
+			// Count existing sockets to prevent resource exhaustion
+		unsigned int socket_count = 0;
+		netsock_t *tmp;
+		list_for_each(tmp, &all_sockets) {
+			socket_count++;
+		}
+		
+		if (socket_count >= MAX_SOCKETS) {
+			error("too many sockets (max: %d)", MAX_SOCKETS);
+			if (cli)
+				controller_answer(cli, "too many sockets");
+			free(ns);
+			close(fd);
+			return NULL;
+		}
+		
 		list_add_tail(&ns->list, &all_sockets);
 	} else {
-		error("failed to allocated socket structure");
+		error("failed to allocate socket structure");
 		if (cli)
-			controller_answer(cli, "failed to allocated socket structure");
+			controller_answer(cli, "failed to allocate socket structure");
 		close(fd);
 	}
 
