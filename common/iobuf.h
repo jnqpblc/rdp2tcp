@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __MPROXY_IOBUF_H__
-#define __MPROXY_IOBUF_H__
+#ifndef __RDP2TCP_IOBUF_H__
+#define __RDP2TCP_IOBUF_H__
 
 #include "debug.h"
 #include <sys/types.h>
@@ -80,12 +80,38 @@ static inline void *iobuf_allocptr(iobuf_t *buf)
 	return ((char *)buf->data) + buf->size;
 }
 
+/**
+ * @brief Consume data from the beginning of an I/O buffer
+ * @param[in,out] buf The I/O buffer to consume data from
+ * @param[in] consumed Number of bytes to consume
+ */
 void iobuf_consume(iobuf_t *, unsigned int);
 
+/**
+ * @brief Reserve space in an I/O buffer for writing
+ * @param[in,out] buf The I/O buffer to reserve space in
+ * @param[in] size Number of bytes to reserve
+ * @param[out] reserved Pointer to store actual reserved size
+ * @return Pointer to reserved memory area, or NULL on failure
+ */
 void *iobuf_reserve(iobuf_t *, unsigned int, unsigned int *);
+
+/**
+ * @brief Commit previously reserved space in an I/O buffer
+ * @param[in,out] buf The I/O buffer to commit to
+ * @param[in] committed Number of bytes to commit
+ */
 void iobuf_commit(iobuf_t *, unsigned int);
+
+/**
+ * @brief Append data to an I/O buffer
+ * @param[in,out] buf The I/O buffer to append to
+ * @param[in] data Data to append
+ * @param[in] size Size of data to append
+ * @return Pointer to appended data, or NULL on failure
+ */
 void *iobuf_append(iobuf_t *, const void *, unsigned int);
 //void iobuf_xfer(iobuf_t *, iobuf_t *);
 
-#endif
+#endif // __RDP2TCP_IOBUF_H__
 // vim: ts=3 sw=3
