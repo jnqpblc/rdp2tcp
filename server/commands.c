@@ -23,6 +23,9 @@
 #include "rdp2tcp.h"
 #include "r2twin.h"
 #include "msgparser.h"
+#include <string.h>
+
+extern struct list_head all_tunnels;
 
 static int protoerror(unsigned char tid, unsigned char err, const char *errstr)
 {
@@ -37,17 +40,41 @@ static int start_tcp_tunnel(
 {
 	static const int r2taf_to_sysaf[3] = { AF_UNSPEC, AF_INET, AF_INET6 };
 
+	// Validate message pointer
+	if (!msg) {
+		return error("invalid message pointer");
+	}
+
 	if (len < 7)
 		return protoerror(msg->id, R2TERR_BADMSG, "command too small");
 
+	// Check if tunnel ID is already in use
 	if (tunnel_lookup(msg->id))
 		return error("tunnel 0x%02x is already used", msg->id);
+	
+	// Count existing tunnels to prevent resource exhaustion
+	unsigned int tunnel_count = 0;
+	tunnel_t *tun;
+	list_for_each(tun, &all_tunnels) {
+		tunnel_count++;
+	}
+	
+	if (tunnel_count >= MAX_TUNNELS) {
+		return protoerror(msg->id, R2TERR_GENERIC, "too many tunnels");
+	}
 
 	if (msg->af > TUNAF_IPV6)
 		return protoerror(msg->id, R2TERR_BADMSG, "invalid address family");
 
-	if (msg->hostname[len-6])
+	// Validate hostname length and content
+	if (len < 7 || msg->hostname[len-6] != '\0') {
 		return protoerror(msg->id, R2TERR_BADMSG, "invalid hostname");
+	}
+
+	// Additional hostname validation
+	if (strlen(msg->hostname) == 0 || strlen(msg->hostname) > MAX_HOSTNAME_LEN) {
+		return protoerror(msg->id, R2TERR_BADMSG, "hostname length invalid");
+	}
 
 	tunnel_create(msg->id, r2taf_to_sysaf[msg->af],
 						msg->hostname, ntohs(msg->port), bind_tunnel);
