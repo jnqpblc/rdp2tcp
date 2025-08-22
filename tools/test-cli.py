@@ -12,20 +12,35 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     # Import the CLI class directly from the file
     import importlib.util
-
+    
     # Try to find the CLI file
-    cli_paths = ["rdp2tcp-cli.py", "tools/rdp2tcp-cli.py"]
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.getcwd()
+    
+    cli_paths = [
+        os.path.join(script_dir, "rdp2tcp-cli.py"),  # In tools directory
+        os.path.join(current_dir, "rdp2tcp-cli.py"),  # In current directory
+        os.path.join(current_dir, "tools", "rdp2tcp-cli.py")  # In tools subdirectory
+    ]
+    
     spec = None
+    found_path = None
     
     for path in cli_paths:
-        spec = importlib.util.spec_from_file_location("rdp2tcp_cli", path)
-        if spec is not None:
-            print(f"Found CLI file at: {path}")
-            break
+        if os.path.exists(path):
+            spec = importlib.util.spec_from_file_location("rdp2tcp_cli", path)
+            if spec is not None:
+                found_path = path
+                print(f"Found CLI file at: {path}")
+                break
     
     if spec is None:
-        raise ImportError("Could not find rdp2tcp-cli.py in current directory or tools/")
-
+        print(f"Available paths checked:")
+        for path in cli_paths:
+            print(f"  - {path} (exists: {os.path.exists(path)})")
+        raise ImportError("Could not find rdp2tcp-cli.py")
+        
     rdp2tcp_cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(rdp2tcp_cli)
     RDP2TCPEnhancedCLI = rdp2tcp_cli.RDP2TCPEnhancedCLI
@@ -33,8 +48,19 @@ try:
     print("Testing RDP2TCP Enhanced CLI...")
     
     # Test initialization with config file
-    config_file = "config.yaml"
-    if os.path.exists(config_file):
+    config_paths = [
+        os.path.join(script_dir, "config.yaml"),  # In tools directory
+        os.path.join(current_dir, "config.yaml"),  # In current directory
+        os.path.join(current_dir, "tools", "config.yaml")  # In tools subdirectory
+    ]
+    
+    config_file = None
+    for path in config_paths:
+        if os.path.exists(path):
+            config_file = path
+            break
+            
+    if config_file:
         print(f"Loading config from {config_file}")
         cli = RDP2TCPEnhancedCLI(config_file)
         print("CLI initialized successfully!")
