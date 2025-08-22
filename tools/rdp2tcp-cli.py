@@ -46,8 +46,13 @@ class RDP2TCPEnhancedCLI:
     """Enhanced CLI for RDP2TCP management"""
     
     def __init__(self, config_file: Optional[str] = None):
-        self.config = self.load_config(config_file)
+        # Setup logging first with default config
+        self.config = GlobalConfig()
         self.setup_logging()
+        
+        # Now load the actual config
+        self.config = self.load_config(config_file)
+        self.setup_logging()  # Re-setup with loaded config
         self.client = None
         
     def setup_logging(self):
@@ -281,6 +286,47 @@ class RDP2TCPEnhancedCLI:
         except Exception as e:
             self.logger.error(f"Failed to save configuration: {e}")
             return False
+            
+    def config_load_tunnels(self) -> bool:
+        """Load and create tunnels from configuration"""
+        if not self.config.tunnels:
+            self.logger.warning("No tunnels defined in configuration")
+            return True
+            
+        success_count = 0
+        total_count = len(self.config.tunnels)
+        
+        for tunnel_config in self.config.tunnels:
+            if not tunnel_config.enabled:
+                self.logger.info(f"Skipping disabled tunnel: {tunnel_config.name}")
+                continue
+                
+            self.logger.info(f"Creating tunnel: {tunnel_config.name}")
+            
+            try:
+                success = self.tunnel_create(
+                    name=tunnel_config.name,
+                    tunnel_type=tunnel_config.type,
+                    local_host=tunnel_config.local_host,
+                    local_port=tunnel_config.local_port,
+                    remote_host=tunnel_config.remote_host,
+                    remote_port=tunnel_config.remote_port,
+                    command=tunnel_config.command,
+                    compression=tunnel_config.compression,
+                    bandwidth_limit=tunnel_config.bandwidth_limit
+                )
+                
+                if success:
+                    success_count += 1
+                    self.logger.info(f"Successfully created tunnel: {tunnel_config.name}")
+                else:
+                    self.logger.error(f"Failed to create tunnel: {tunnel_config.name}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error creating tunnel {tunnel_config.name}: {e}")
+                
+        self.logger.info(f"Tunnel creation complete: {success_count}/{total_count} successful")
+        return success_count == total_count
 
 def main():
     parser = argparse.ArgumentParser(
@@ -292,6 +338,7 @@ Examples:
   rdp2tcp-cli tunnel list --format json
   rdp2tcp-cli monitor --duration 300
   rdp2tcp-cli config save --output config.yaml
+  rdp2tcp-cli --config config.yaml config load
         """
     )
     
@@ -345,6 +392,8 @@ Examples:
     save_parser = config_subparsers.add_parser('save', help='Save configuration')
     save_parser.add_argument('--output', required=True, help='Output file')
     
+    load_parser = config_subparsers.add_parser('load', help='Load tunnels from configuration')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -391,6 +440,8 @@ Examples:
         elif args.command == 'config':
             if args.config_command == 'save':
                 success = cli.config_save(args.output)
+            elif args.config_command == 'load':
+                success = cli.config_load_tunnels()
             else:
                 config_parser.print_help()
                 return 1
