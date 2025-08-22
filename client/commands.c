@@ -39,6 +39,12 @@ static netsock_t *check_tunnel_id(const r2tmsg_t *msg)
 {
 	netsock_t *ns;
 
+	// Validate message pointer
+	if (!msg) {
+		error("invalid message pointer");
+		return NULL;
+	}
+
 	ns = tunnel_lookup(msg->id);
 	if (!ns) {
 		warn("unknown tunnel 0x%02x", msg->id);
