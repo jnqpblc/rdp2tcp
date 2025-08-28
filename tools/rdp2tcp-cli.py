@@ -152,24 +152,6 @@ class RDP2TCPEnhancedCLI:
                 result = self.client.add_tunnel(cmd_type, (local_host, local_port), (remote_host, remote_port))
                 
             self.logger.info(f"Tunnel '{name}' created: {result}")
-            
-            # Store tunnel configuration
-            tunnel_config = TunnelConfig(
-                name=name,
-                type=tunnel_type,
-                local_host=local_host,
-                local_port=local_port,
-                remote_host=remote_host,
-                remote_port=remote_port,
-                command=command,
-                compression=compression,
-                bandwidth_limit=bandwidth_limit
-            )
-            
-            if not self.config.tunnels:
-                self.config.tunnels = []
-            self.config.tunnels.append(tunnel_config)
-            
             return True
             
         except R2TException as e:

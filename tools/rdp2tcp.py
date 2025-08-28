@@ -46,8 +46,8 @@ class rdp2tcp:
 	def __init__(self, host, port):
 		try:
 			s = connect_to(host, port)
-		except(socket.error, e):
-			raise R2TException(e[1])
+		except socket.error as e:
+			raise R2TException(str(e))
 		self.sock = s
 
 	def close(self):
@@ -104,7 +104,7 @@ commands:
 		laddr = ('127.0.0.1', randint(1025, 0xffff))
 		try:
 			print(x.add_tunnel(type, laddr, dst))
-		except(R2TException, e):
+		except R2TException as e:
 			print('error:', e)
 			return
 
@@ -116,7 +116,7 @@ commands:
 
 		try:
 			print(x.del_tunnel(laddr))
-		except(R2TException, e):
+		except R2TException as e:
 			print('error:', e)
 
 
@@ -140,7 +140,7 @@ commands:
 
 	try:
 		r2t = rdp2tcp(host, port)
-	except(R2TException, e):
+	except R2TException as e:
 		print('error: %s' % str(e))
 		exit(0)
 	
@@ -165,7 +165,7 @@ commands:
 
 		try:
 			print(r2t.add_tunnel(type, src, dst))
-		except(R2TException, e):
+		except R2TException as e:
 			print('error: %s' % str(e))
 
 	elif cmd == 'del':
@@ -173,7 +173,7 @@ commands:
 
 		try:
 			print(r2t.del_tunnel((argv[i+1], int(argv[i+2]))))
-		except(R2TException, e):
+		except R2TException as e:
 			print('error: %s' % str(e))
 
 	elif cmd == 'info':
