@@ -11,6 +11,28 @@ log_file: "/tmp/rdp2tcp-cli.log"
 
 # Predefined tunnels
 tunnels:
+  - name: "socks-proxy"
+    type: "socks5"
+    local_host: "127.0.0.1"
+    local_port: 19050
+    enabled: true
+  
+  - name: "neo4j-bolt-for-bloodhound"
+    type: "reverse"
+    local_host: "192.168.1.100"
+    local_port: 7687
+    remote_host: "127.0.0.1"
+    remote_port: 7687
+    enabled: false
+
+  - name: "neo4j-brower-for-bloodhound"
+    type: "reverse"
+    local_host: "192.168.1.100"
+    local_port: 7474
+    remote_host: "127.0.0.1"
+    remote_port: 7474
+    enabled: false
+
   - name: "web-server"
     type: "tcp"
     local_host: "127.0.0.1"
@@ -29,12 +51,6 @@ tunnels:
     remote_port: 22
     enabled: false
     compression: "lz4"
-
-  - name: "socks-proxy"
-    type: "socks5"
-    local_host: "127.0.0.1"
-    local_port: 19050
-    enabled: true
 
   - name: "cmd-shell"
     type: "process"
