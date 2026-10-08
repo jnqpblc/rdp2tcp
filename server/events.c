@@ -26,8 +26,8 @@
 extern struct list_head all_tunnels;
 
 static unsigned int events_count = 0;
-static HANDLE all_events[0x102] = {0, };
-static unsigned char evtid_to_tunid[0x102] = {0, };
+static HANDLE all_events[MAX_EVENTS] = {0, };
+static unsigned char evtid_to_tunid[MAX_EVENTS] = {0, };
 
 /** initialize the TS events loop
  * @param[in] wevt TS virtual channel write-event
@@ -83,8 +83,10 @@ int event_add_process(HANDLE proc, HANDLE re, HANDLE we, unsigned char id)
 	trace_evt("proc=%x, revt=%x, wevt=%x, id=%u", proc, re, we, id);
 
 	i = events_count;
-	if (i+2 >= 0x101)
+	if (i + 3 > MAX_EVENTS) {
+		error("too many events registered (max: %d)", MAX_EVENTS);
 		return -1;
+	}
 
 	all_events[i] = proc;
 	all_events[i+1] = re; // read overlapped event

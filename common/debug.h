@@ -46,7 +46,7 @@ void __trace(const char *, int, const char *, const char *, ...);
 		__trace(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__);} }
 	
 #define LIB_TRACING_CATS \
-		"iobuf", "sock", "chan", "evt", "proc", "ctrl", "tun", "socks"
+		"iobuf", "sock", "chan", "evt", "proc", "ctrl", "tun", "socks", "comp"
 
 #else
 /** print debug statement */
@@ -63,5 +63,6 @@ void __trace(const char *, int, const char *, const char *, ...);
 #define trace_ctrl(...)  trace(5, __VA_ARGS__)
 #define trace_tun(...)   trace(6, __VA_ARGS__)
 #define trace_socks(...) trace(7, __VA_ARGS__)
+#define trace_comp(...)  trace(8, __VA_ARGS__)
 
 #endif

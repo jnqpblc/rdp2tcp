@@ -461,22 +461,24 @@ int net_write(
 #else
 			ret = send(net_fd(s), data, size, 0);
 #endif
-			if (ret < 0)
-				return net_pending() ? 1 : -(int)nethelper_error;
-
-			if (!ret)
-				return NETERR_CLOSED;
-
-			data = ((const char *)data) + ret;
-			size -= ret;
-			*out_size = (unsigned int) ret;
-			if (!size) {
-#ifdef _WIN32
-				// don't watch FD_WRITE events anymore
-				if (WSAEventSelect(s->fd, s->evt, FD_READ|FD_CLOSE))
+			if (ret < 0) {
+				if (!net_pending())
 					return -(int)nethelper_error;
+				// would block: fall through and queue the whole buffer
+			} else if (!ret) {
+				return NETERR_CLOSED;
+			} else {
+				data = ((const char *)data) + ret;
+				size -= ret;
+				*out_size = (unsigned int) ret;
+				if (!size) {
+#ifdef _WIN32
+					// don't watch FD_WRITE events anymore
+					if (WSAEventSelect(s->fd, s->evt, FD_READ|FD_CLOSE))
+						return -(int)nethelper_error;
 #endif
-				return 0;
+					return 0;
+				}
 			}
 		}
 

@@ -223,7 +223,8 @@ static int socks5_setup(netsock_t *cli)
 			return socks_error(cli, SOCKS5_UNKADDRTYPE);
 	}
 
-	port = ntohs((((unsigned short)buf[port_off+1]) << 8) | buf[port_off]);
+	// DST.PORT is 2 bytes in network (big-endian) order
+	port = (((unsigned short)buf[port_off]) << 8) | buf[port_off+1];
 	if (!port) {
 		if (host && (host != ip))
 			free(host);

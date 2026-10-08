@@ -15,6 +15,8 @@ import socket
 import time
 import threading
 
+from testutil import require_integration
+
 def create_test_tunnel():
     """Create a simple TCP tunnel for testing"""
     try:
@@ -97,9 +99,16 @@ def cleanup_tunnel(r2t):
         print(f"Cleanup error: {e}")
 
 def main():
+    require_integration('test-tcp-tunnel.py')
+
     print("TCP Tunnel Test")
     print("="*30)
-    
+    print("NOTE: the forward tunnel's target (127.0.0.1:8889) is resolved on")
+    print("      the REMOTE (rdp2tcp server) side, while this script's test")
+    print("      server listens LOCALLY. This test therefore only passes when")
+    print("      the rdp2tcp server runs on this same host (loopback).")
+    print()
+
     # Create tunnel
     r2t = create_test_tunnel()
     if not r2t:

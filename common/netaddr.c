@@ -42,7 +42,7 @@ void netaddr_set(int af, const void *addr, unsigned short port, netaddr_t *a)
 
 	if (af == AF_INET) {
 		a->ip4.sin_family = AF_INET;
-		a->ip4.sin_port = ntohs(port);
+		a->ip4.sin_port = htons(port);
 		memcpy(&a->ip4.sin_addr, addr, 4);
 	} else {
 		a->ip6.sin6_family = AF_INET6;

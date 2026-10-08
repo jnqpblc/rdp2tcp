@@ -4,8 +4,11 @@ from random import randint
 from time import sleep
 from os import system
 
-def connect_to(host, port):
+DEFAULT_TIMEOUT = 10.0
+
+def connect_to(host, port, timeout=DEFAULT_TIMEOUT):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+	s.settimeout(timeout)
 	s.connect((host, port))
 	return s
 
@@ -43,9 +46,9 @@ class R2TClient:
 
 class rdp2tcp:
 
-	def __init__(self, host, port):
+	def __init__(self, host, port, timeout=DEFAULT_TIMEOUT):
 		try:
-			s = connect_to(host, port)
+			s = connect_to(host, port, timeout)
 		except socket.error as e:
 			raise R2TException(str(e))
 		self.sock = s
@@ -54,17 +57,26 @@ class rdp2tcp:
 		self.sock.close()
 
 	def __read_answer(self, end_marker='\n'):
+		marker = end_marker.encode()
 		data = b''
 		while True:
-			chunk = self.sock.recv(4096)
+			# Controller errors are always terminated by a single newline,
+			# even when we are waiting for a longer delimiter (e.g. '\n\n').
+			if data.startswith(b'error: ') and b'\n' in data:
+				raise R2TException(data[7:data.find(b'\n')].decode())
+			if marker in data:
+				break
+			try:
+				chunk = self.sock.recv(4096)
+			except socket.timeout:
+				raise R2TException('timed out waiting for controller response')
 			if not chunk:
-				break
+				# EOF before the expected delimiter: never report a truncated
+				# response (or an empty one) as success.
+				raise R2TException(
+					'controller closed the connection before sending a complete response')
 			data += chunk
-			if end_marker.encode() in data:
-				break
-		if data.startswith(b'error: '):
-			raise R2TException(data[7:-1].decode())
-		return data[:data.find(end_marker.encode())].decode()
+		return data[:data.find(marker)].decode()
 
 	def info(self):
 		self.sock.sendall('l\n'.encode())
@@ -125,14 +137,31 @@ commands:
 		usage()
 
 	host,port = '127.0.0.1',8477
-	
+
 	i = 1
-	while argv[i].startswith('-'):
-		if argv[i] == '-h':
-			pass
-		elif argv[i] == '-p':
-			pass
+	while i < argc and argv[i].startswith('-'):
+		opt = argv[i]
+		if opt in ('--help',):
+			usage()
+		if opt not in ('-h', '-p'):
+			print('error: unknown option %s' % opt)
+			usage()
+		if i + 1 >= argc:
+			print('error: option %s requires an argument' % opt)
+			usage()
+		val = argv[i + 1]
+		if opt == '-h':
+			host = val
+		else:
+			try:
+				port = int(val)
+			except ValueError:
+				print('error: invalid port: %s' % val)
+				usage()
 		i += 2
+
+	if i >= argc:
+		usage()
 
 	cmd = argv[i]
 	if cmd not in ('info','add','del','sh','telnet'):

@@ -5,15 +5,18 @@ Test script to verify the SOCKS5 fix
 
 import sys
 import socket
-import struct
-import time
+
+from socks5_util import (socks5_handshake, build_connect_request,
+                         read_socks5_reply, SOCKS5Error)
+from testutil import require_integration
 
 def test_socks5_handshake(host='127.0.0.1', port=19050):
     """Test SOCKS5 handshake with detailed debugging"""
-    
+
     print(f"🔍 Testing SOCKS5 handshake to {host}:{port}")
     print("=" * 50)
-    
+
+    sock = None
     try:
         # Step 1: Connect to SOCKS5 proxy
         print("1. Connecting to SOCKS5 proxy...")
@@ -21,107 +24,51 @@ def test_socks5_handshake(host='127.0.0.1', port=19050):
         sock.settimeout(10)
         sock.connect((host, port))
         print("   ✓ Connected successfully")
-        
-        # Step 2: SOCKS5 handshake
-        print("\n2. Sending SOCKS5 handshake...")
-        handshake = b'\x05\x01\x00'  # VER=5, NMETHODS=1, METHOD=0 (no auth)
-        print(f"   Sending: {handshake.hex()}")
-        sock.send(handshake)
-        
-        # Step 3: Receive handshake response
-        print("\n3. Waiting for handshake response...")
-        response = sock.recv(2)
-        print(f"   Received: {response.hex()}")
-        
-        if len(response) == 0:
-            print("   ✗ No response received - connection closed")
-            return False
-            
-        if len(response) < 2:
-            print(f"   ✗ Incomplete response: {response.hex()}")
-            return False
-            
-        ver, method = struct.unpack('!BB', response)
-        print(f"   Version: {ver}, Method: {method}")
-        
-        if ver != 5:
-            print(f"   ✗ Wrong SOCKS version: {ver}")
-            return False
-            
-        if method != 0:
-            print(f"   ✗ Authentication required: {method}")
-            return False
-            
+
+        # Step 2+3: SOCKS5 handshake (reads exactly the 2-byte method reply)
+        print("\n2. Performing SOCKS5 handshake...")
+        socks5_handshake(sock)
         print("   ✓ SOCKS5 handshake successful!")
-        
+
         # Step 4: Send connect request
         print("\n4. Sending connect request...")
         target_host = "ifconfig.io"
         target_port = 80
-        
-        # Build connect request: VER=5, CMD=1 (CONNECT), RSV=0, ATYPE=3 (domain), DST.ADDR, DST.PORT
-        domain = target_host.encode()
-        connect_req = struct.pack('!BBBB', 5, 1, 0, 3) + struct.pack('B', len(domain)) + domain + struct.pack('!H', target_port)
+        sock.sendall(build_connect_request(target_host, target_port))
         print(f"   Target: {target_host}:{target_port}")
-        print(f"   Sending: {connect_req.hex()}")
-        sock.send(connect_req)
-        
-        # Step 5: Receive connect response
-        print("\n5. Waiting for connect response...")
-        response = sock.recv(10)
-        print(f"   Received: {response.hex()}")
-        
-        if len(response) == 0:
-            print("   ✗ No response received - connection closed")
-            return False
-            
-        if len(response) < 4:
-            print(f"   ✗ Incomplete response: {response.hex()}")
-            return False
-            
-        ver, rep, rsv, atyp = struct.unpack('!BBBB', response[:4])
-        print(f"   Version: {ver}, Reply: {rep}, RSV: {rsv}, ATYPE: {atyp}")
-        
-        if rep != 0:
-            error_codes = {
-                1: "General SOCKS server failure",
-                2: "Connection not allowed by ruleset",
-                3: "Network unreachable",
-                4: "Host unreachable",
-                5: "Connection refused",
-                6: "TTL expired",
-                7: "Command not supported",
-                8: "Address type not supported"
-            }
-            error_msg = error_codes.get(rep, f"Unknown error {rep}")
-            print(f"   ✗ SOCKS5 connect failed: {error_msg}")
-            return False
-            
-        print("   ✓ SOCKS5 connect successful!")
-        
+
+        # Step 5: Receive connect response (length determined by ATYP)
+        print("\n5. Reading connect response...")
+        reply = read_socks5_reply(sock)
+        print(f"   ✓ SOCKS5 connect successful (bound {reply['addr']}:{reply['port']})")
+
         # Step 6: Send HTTP request
         print("\n6. Sending HTTP request...")
         http_request = f"GET /ip HTTP/1.1\r\nHost: {target_host}\r\nConnection: close\r\n\r\n".encode()
-        sock.send(http_request)
-        
+        sock.sendall(http_request)
+
         # Step 7: Receive HTTP response
         print("\n7. Receiving HTTP response...")
         response = sock.recv(1024)
         print(f"   Received {len(response)} bytes")
-        
-        if response:
-            print(f"   ✓ HTTP response received: {response[:100].decode('utf-8', errors='ignore')}...")
-        else:
+
+        if not response:
             print("   ✗ No HTTP response received")
             return False
-        
-        sock.close()
+        print(f"   ✓ HTTP response received: {response[:100].decode('utf-8', errors='ignore')}...")
+
         print("\n🎉 SOCKS5 test successful!")
         return True
-        
+
+    except SOCKS5Error as e:
+        print(f"   ✗ SOCKS5 error: {e}")
+        return False
     except Exception as e:
         print(f"   ✗ SOCKS5 test failed: {e}")
         return False
+    finally:
+        if sock is not None:
+            sock.close()
 
 def test_channel_status():
     """Test RDP2TCP channel status"""
@@ -150,9 +97,11 @@ def test_channel_status():
         return False
 
 def main():
+    require_integration('test-socks5.py')
+
     print("SOCKS5 Fix Test")
     print("="*30)
-    
+
     # Test 1: Channel status
     if not test_channel_status():
         print("\n❌ Channel status test failed!")

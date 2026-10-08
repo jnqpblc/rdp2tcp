@@ -38,4 +38,10 @@
 #define typeof(x) __typeof__(x)
 #endif
 
+#ifdef __GNUC__
+#define FMT_PRINTF(f,a) __attribute__((format(printf,f,a)))
+#else
+#define FMT_PRINTF(f,a)
+#endif
+
 #endif

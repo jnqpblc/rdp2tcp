@@ -4,8 +4,8 @@ Test script to verify the compression fix
 """
 
 import sys
-import socket
-import time
+
+from testutil import require_integration
 
 def test_basic_connection():
     """Test basic RDP2TCP connection without compression"""
@@ -60,26 +60,31 @@ def test_socks5_tunnel():
         return False
 
 def test_compression_ignored():
-    """Test that compression commands are properly ignored"""
+    """Confirm that normal operations still work.
+
+    NOTE: compression is NOT implemented in the rdp2tcp protocol — both the
+    client and server command handlers explicitly ignore R2TCMD_COMPRESS. This
+    only verifies that ordinary controller traffic is unaffected; it does not
+    (and cannot) prove any compression actually happens.
+    """
     try:
         from rdp2tcp import rdp2tcp, R2TException
-        
-        print("\nTesting compression command handling...")
+
+        print("\nVerifying controller still responds (compression is a no-op)...")
         r2t = rdp2tcp('127.0.0.1', 8477)
-        
-        # The compression fix should allow normal operations to work
-        # even if compression commands are sent (they'll be ignored)
         info = r2t.info()
-        print(f"✓ Compression fix working: {info}")
-        
+        print(f"✓ Controller responsive: {info}")
+
         r2t.close()
         return True
-        
+
     except Exception as e:
-        print(f"✗ Compression test failed: {e}")
+        print(f"✗ Controller check failed: {e}")
         return False
 
 def main():
+    require_integration('test-compression.py')
+
     print("Compression Fix Test")
     print("="*30)
     
@@ -102,9 +107,9 @@ def main():
         return False
     
     print("\n🎉 All tests passed!")
-    print("The compression fix is working correctly.")
-    print("SOCKS5 functionality should now work properly.")
-    
+    print("Controller and SOCKS5 tunnel creation work. (Compression is a")
+    print("protocol no-op; these tests do not exercise real compression.)")
+
     return True
 
 if __name__ == '__main__':

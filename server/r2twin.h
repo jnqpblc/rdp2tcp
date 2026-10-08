@@ -21,7 +21,7 @@
 
 // Resource limits
 #define MAX_TUNNELS 256
-#define MAX_EVENTS 0x101
+#define MAX_EVENTS 64 // WaitForMultipleObjects limit (MAXIMUM_WAIT_OBJECTS)
 #define MAX_HOSTNAME_LEN 255
 #define MAX_CMD_LINE_LEN 1024
 

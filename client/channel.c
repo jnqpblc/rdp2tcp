@@ -110,7 +110,7 @@ int channel_read_event(void)
 	} while (avail > 0);
 
 	// Validate message length to prevent buffer overflow
-	if (msglen > NETBUF_MAX_SIZE) {
+	if (msglen > RDP2TCP_MAX_MSGLEN) {
 		return error("message too large: %u bytes", msglen);
 	}
 	
@@ -122,7 +122,7 @@ int channel_read_event(void)
 	do {
 		r = read(RDP_FD_IN, ptr, avail);
 		//trace_chan("r=%u/%u", r, avail);
-		if (r < 0)
+		if (r <= 0) // r==0 means the channel closed mid-message
 			goto chan_read_err;
 
 #ifdef DEBUG
@@ -228,7 +228,7 @@ static void write_commit(unsigned int size)
 	assert(size);
 	//trace_chan("size=%u", size);
 
-	*(unsigned int *)(iobuf_allocptr(&vc.obuf)) = htonl(size);
+	{ unsigned int n = htonl(size); memcpy(iobuf_allocptr(&vc.obuf), &n, 4); }
 	iobuf_commit(&vc.obuf, size+4);
 }
 
@@ -351,7 +351,7 @@ int channel_forward_recv(netsock_t *ns)
 	ret = netsock_read(ns, &vc.obuf, 6, &r);
 	if (!ret) {
 		msg = iobuf_dataptr(&vc.obuf) + off;
-		*(unsigned int*)msg = htonl(r + 2);
+		{ unsigned int n = htonl(r + 2); memcpy(msg, &n, 4); }
 		msg[4] = R2TCMD_DATA;
 		msg[5] = ns->tid;
 	}

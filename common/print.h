@@ -21,12 +21,13 @@
 
 #include <stdio.h>
 #include "debug.h"
+#include "compiler.h"
 
 void print_init(void);
 
-void info(int, const char *, ...);
-int warn(const char *, ...);
-int error(const char *, ...);
+void info(int, const char *, ...) FMT_PRINTF(2, 3);
+int warn(const char *, ...) FMT_PRINTF(1, 2);
+int error(const char *, ...) FMT_PRINTF(1, 2);
 
 void print_xfer(const char *, char, unsigned int);
 

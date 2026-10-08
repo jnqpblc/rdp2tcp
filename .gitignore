@@ -1,5 +1,107 @@
+# Local configuration and environment data
+.env
+.env.*
+!.env.example
+!.env.sample
+.netrc
+.authinfo
+.pypirc
+.npmrc
+pip.conf
+*.local.json
+*.local.yaml
+*.local.yml
+/tools/config.yaml
+/tools/config.local.json
+/tools/config.local.yaml
+/tools/config.local.yml
+/tools/proxychains.local.conf
+/tools/proxychains-*.local.conf
+/tools/proxychains-no-dns.conf
+/tools/proxychains-google-dns.conf
+/tools/proxychains-cloudflare-dns.conf
 
+# Credentials and private keys
+*.key
+*.pem
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+*.ovpn
+*.kubeconfig
+kubeconfig
+id_rsa*
+id_ed25519*
+**/credentials.json
+**/credentials.yaml
+**/credentials.yml
+**/secrets.json
+**/secrets.yaml
+**/secrets.yml
+
+# Python caches, environments, and test output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Native build and debug output
 *.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
 /client/rdp2tcp
-/server/rdp2tcp.exe
 
+# Generated upload payloads
+/server/*.ps1
+/server/*.xte
+/server/*.b64
+
+# Logs, runtime state, dumps, and captures
+*.log
+*.pid
+*.sock
+core
+core.*
+*.dmp
+*.pcap
+*.pcapng
+*.cap
+*.rdp
+*.db
+*.sqlite
+*.sqlite3
+captures/
+recordings/
+screenshots/
+
+# Temporary files and local tool state
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+tmp/
+temp/
+
+# Editor and operating-system metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

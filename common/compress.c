@@ -244,8 +244,8 @@ unsigned int get_max_compressed_size(unsigned char algorithm, unsigned int input
 {
     switch (algorithm) {
         case COMPRESS_GZIP:
-            // zlib worst case: input_size + 0.1% + 12 bytes
-            return input_size + (input_size / 1000) + 12;
+            // zlib documented worst case
+            return compressBound(input_size);
             
 #ifdef HAVE_LZ4
         case COMPRESS_LZ4:
@@ -263,25 +263,12 @@ unsigned int get_max_compressed_size(unsigned char algorithm, unsigned int input
 
 int should_compress(const void *data, unsigned int size)
 {
+    (void)data;
+
     // Don't compress small data (overhead not worth it)
-    if (size < 64) {
+    if (size < 64)
         return 0;
-    }
-    
-    // Check if data is already compressed or encrypted
-    // This is a simple heuristic - could be improved
-    const unsigned char *bytes = (const unsigned char *)data;
-    unsigned int i;
-    
-    // Check for common compressed/encrypted patterns
-    for (i = 0; i < size && i < 16; i++) {
-        // High entropy data is more likely to benefit from compression
-        if (bytes[i] == 0 || bytes[i] == 0xFF) {
-            continue;
-        }
-    }
-    
-    // If we see mostly zeros or repeated patterns, compression might help
+
     return 1;
 }
 

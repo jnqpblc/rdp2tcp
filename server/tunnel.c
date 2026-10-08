@@ -443,7 +443,7 @@ static int tunnel_accept_event(tunnel_t *tun)
 	msg.rid = tid;
 
 	if (channel_write(R2TCMD_RCONN, tun->id, &msg.rid, msg_len) < 0)
-		tunnel_close(tun);
+		tunnel_close(cli);
 
 	return 0;
 }

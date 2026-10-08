@@ -25,6 +25,7 @@
 #include "msgparser.h"
 
 #include <stdio.h>
+#include <string.h>
 #ifndef _WIN32
 #include <arpa/inet.h>
 #else
@@ -65,9 +66,10 @@ int commands_parse(iobuf_t *ibuf)
 	debug(1, "commands_parse(avail=%u)", avail);
 
 	// for each command
-	while (off + 5 < avail) {
+	while (off + 5 <= avail) {
 
-		msg_len = ntohl(*(unsigned int*)(data+off));
+		memcpy(&msg_len, data+off, 4);
+		msg_len = ntohl(msg_len);
 		if (!msg_len || (msg_len > RDP2TCP_MAX_MSGLEN))
 			return error("invalid channel msg size 0x%08x", msg_len);
 

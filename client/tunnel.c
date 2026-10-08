@@ -149,8 +149,8 @@ int tunnel_add(
 					lhost, lport, rhost);
 	}
 
-	info(0, str);
-	return controller_answer(cli, str);
+	info(0, "%s", str);
+	return controller_answer(cli, "%s", str);
 }
 
 /**
@@ -202,8 +202,8 @@ int tunnel_add_reverse(
 
 	snprintf(str, sizeof(str)-1, "tunnel [%s]:%hu <-- [%s]:%hu is being registred",
 				lhost, lport, rhost, rport);
-	info(0, str);
-	return controller_answer(cli, str);
+	info(0, "%s", str);
+	return controller_answer(cli, "%s", str);
 }
 
 /**

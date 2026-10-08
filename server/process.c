@@ -40,13 +40,14 @@ static int pipe_create(HANDLE *pfd, int parent_fd)
 	HANDLE fd;
 	SECURITY_ATTRIBUTES sattr;
 	char name[128];
+	static unsigned int seq = 0;
 
 	memset(&sattr, 0, sizeof(sattr));
 	sattr.nLength = sizeof(sattr);
 	sattr.bInheritHandle = TRUE;
 
-	snprintf(name, sizeof(name)-1, "\\\\.\\pipe\\" PIPE_NAME "-%lu-%i",
-			GetCurrentProcessId(), rand());
+	snprintf(name, sizeof(name)-1, "\\\\.\\pipe\\" PIPE_NAME "-%lu-%u-%u",
+			GetCurrentProcessId(), (unsigned int)GetTickCount(), seq++);
 
 	fd = CreateNamedPipeA(name,
 			PIPE_ACCESS_INBOUND|FILE_FLAG_OVERLAPPED,

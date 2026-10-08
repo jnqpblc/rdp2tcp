@@ -1,0 +1,43 @@
+# RDP2TCP example configuration
+#
+# Copy this file to tools/config.yaml and adjust it for your environment.
+# tools/config.yaml is intentionally ignored because it may contain private
+# network addresses, commands, and other environment-specific information.
+
+controller_host: "127.0.0.1"
+controller_port: 8477
+
+log_level: "INFO"
+log_file: null
+
+# Example tunnels are disabled so loading this file has no side effects.
+# 192.0.2.0/24 is reserved for documentation and is not a real target network.
+tunnels:
+  - name: "socks-proxy"
+    type: "socks5"
+    local_host: "127.0.0.1"
+    local_port: 19050
+    enabled: false
+
+  - name: "web-forward"
+    type: "tcp"
+    local_host: "127.0.0.1"
+    local_port: 8080
+    remote_host: "192.0.2.10"
+    remote_port: 80
+    enabled: false
+
+  - name: "ssh-reverse"
+    type: "reverse"
+    local_host: "127.0.0.1"
+    local_port: 22
+    remote_host: "127.0.0.1"
+    remote_port: 2222
+    enabled: false
+
+  - name: "command-shell"
+    type: "process"
+    local_host: "127.0.0.1"
+    local_port: 4444
+    command: "cmd.exe"
+    enabled: false

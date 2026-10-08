@@ -185,7 +185,7 @@ int channel_write(
 	ptr = iobuf_reserve(&vc.wio.buf, data_len+6, NULL);
 	if (!ptr)
 		return error("failed to append %u bytes to channel buffer", data_len+6);
-	*((unsigned int *)ptr) = htonl(data_len+2);
+	{ unsigned int n = htonl(data_len+2); memcpy(ptr, &n, 4); }
 
 	ptr[4] = cmd;
 	ptr[5] = tun_id;

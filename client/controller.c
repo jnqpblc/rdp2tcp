@@ -53,6 +53,10 @@ int controller_answer(netsock_t *cli, const char *fmt, ...)
 	va_end(va);
 
 	if (ret > 0) {
+		// vsnprintf() returns the length it *would* have written;
+		// clamp so the '\n' and the send length stay inside buf[]
+		if (ret > MAX_CONTROLLER_MSG_LEN-3)
+			ret = MAX_CONTROLLER_MSG_LEN-3;
 		buf[ret] = '\n';
 		ret = netsock_write(cli, buf, ret+1);
 	} else {
