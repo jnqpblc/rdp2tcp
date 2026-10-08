@@ -1,316 +1,320 @@
-# RDP2TCP Enhanced Features
+# Enhanced CLI and multi-hop usage
 
-This document describes the new enhanced features added to RDP2TCP.
+`rdp2tcp-cli.py` is the structured Python 3 interface to the local rdp2tcp
+controller. It manages the same controller protocol as `rdp2tcp.py`, while
+adding configuration files, structured list output, cleanup helpers, polling,
+and a process-tunnel convenience command.
 
-## 1. Enhanced CLI Tools
+Run it from the repository root:
 
-The new `rdp2tcp-cli.py` provides a modern command-line interface with improved usability and configuration management.
-
-### Features
-
-- **Configuration Management**: Support for YAML and JSON configuration files
-- **Structured Commands**: Organized subcommands for better usability
-- **Multiple Output Formats**: Table, JSON, and YAML output formats
-- **Real-time Monitoring**: Live tunnel status monitoring
-- **Logging Integration**: Built-in logging with configurable levels
-
-### Usage Examples
-
-```bash
-# Create a tunnel with compression
-rdp2tcp-cli --config config.yaml tunnel create \
-  --name web-server \
-  --type tcp \
-  --local 8080 \
-  --remote 80 \
-  --compression gzip
-
-# List tunnels in JSON format
-rdp2tcp-cli tunnel list --format json
-
-# Monitor tunnels for 5 minutes
-rdp2tcp-cli monitor --duration 300
-
-# Save current configuration
-rdp2tcp-cli config save --output my-config.yaml
+```sh
+python3 tools/rdp2tcp-cli.py --help
 ```
 
-### Configuration File Example
+PyYAML is required for the enhanced CLI, including when JSON configuration is
+used, because the module is imported at startup.
+
+## Current feature status
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| TCP forwarding | Supported | Local listener; connection originates on Windows |
+| Reverse TCP forwarding | Supported | Windows listener; connection originates on the RDP client side |
+| Process stdin/stdout forwarding | Supported | Starts a process in the Windows session |
+| SOCKS5 | Supported for TCP `CONNECT` | No authentication, `BIND`, or UDP support |
+| IPv4, IPv6, and SOCKS domain names | Supported | Domain names are resolved from the Windows side |
+| YAML/JSON configuration | Supported | Only enabled entries are created |
+| Raw text (`table`), JSON, and YAML list output | Supported | Diagnostics go to stderr |
+| Tunnel polling | Supported | Polls the full controller list every five seconds |
+| Named cleanup | Supported through config | Names are mapped to configured listener addresses |
+| Data compression | Not implemented | Protocol/source scaffolding exists; handlers ignore it |
+| Bandwidth limiting/QoS | Not implemented | No controller or data-path support |
+| Advanced C structured logging | Not integrated | Source exists under `common/`, but normal binaries do not link or initialize it |
+
+The CLI deliberately does not expose compression or bandwidth-limit command
+options. A configuration requesting non-`none` compression or a bandwidth
+limit is rejected rather than silently accepted.
+
+## Global options
+
+Global options must appear before the command:
+
+```text
+--config, -c FILE   Load YAML or JSON configuration
+--host HOST         Override the controller host
+--port PORT         Override the controller port
+--log-level LEVEL   DEBUG, INFO, WARNING, or ERROR
+```
+
+Example:
+
+```sh
+python3 tools/rdp2tcp-cli.py \
+  --config tools/config.yaml \
+  --host 127.0.0.1 \
+  --port 8477 \
+  tunnel list --format json
+```
+
+CLI diagnostics are written to stderr, keeping JSON and YAML on stdout usable
+by other programs. If `log_file` is set in configuration, the same diagnostics
+are also written to that file.
+
+## Tunnel commands
+
+### TCP forwarding
+
+Listen on the RDP client side and ask Windows to connect to the destination:
+
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name web \
+  --type tcp \
+  --local-host 127.0.0.1 \
+  --local-port 8080 \
+  --remote-host 192.0.2.10 \
+  --remote-port 80
+```
+
+### Reverse forwarding
+
+Ask Windows to listen on `remote-host:remote-port`, then forward accepted
+connections to `local-host:local-port` on the RDP client side:
+
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name reverse-ssh \
+  --type reverse \
+  --local-host 127.0.0.1 \
+  --local-port 22 \
+  --remote-host 127.0.0.1 \
+  --remote-port 2222
+```
+
+### SOCKS5
+
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name socks \
+  --type socks5 \
+  --local-host 127.0.0.1 \
+  --local-port 19050
+```
+
+Use proxy-side DNS when the hostname is resolvable only from Windows:
+
+```sh
+curl --proxy socks5h://127.0.0.1:19050 https://example.com/
+```
+
+### Process tunnels
+
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name command-shell \
+  --type process \
+  --local-host 127.0.0.1 \
+  --local-port 4444 \
+  --command cmd.exe
+```
+
+The `sh` convenience command creates a process tunnel bound to loopback. It
+selects a random high port when `--local-port` is omitted:
+
+```sh
+python3 tools/rdp2tcp-cli.py sh --shell-command cmd.exe
+python3 tools/rdp2tcp-cli.py sh \
+  --local-port 4444 \
+  --shell-command powershell.exe \
+  --connect
+```
+
+`--connect` launches the local `telnet` program. The remote command executes
+under the account running `rdp2tcp.exe`.
+
+### List, monitor, and delete
+
+```sh
+python3 tools/rdp2tcp-cli.py tunnel list
+python3 tools/rdp2tcp-cli.py tunnel list --format json
+python3 tools/rdp2tcp-cli.py tunnel list --format yaml
+
+python3 tools/rdp2tcp-cli.py monitor --duration 300
+
+python3 tools/rdp2tcp-cli.py tunnel delete \
+  --local-host 127.0.0.1 \
+  --local-port 8080
+```
+
+Monitoring currently prints the complete controller status every five seconds.
+`--tunnel-id` is accepted by the parser but is not yet used to filter results.
+
+## Configuration management
+
+Start with the sanitized example:
+
+```sh
+cp tools/config.example.yaml tools/config.yaml
+```
+
+`tools/config.yaml` is ignored by Git because real configurations may contain
+private addresses and commands. Keep examples in `tools/config.example.yaml`
+disabled and free of environment-specific data.
+
+Minimal configuration:
 
 ```yaml
-# config.yaml
 controller_host: "127.0.0.1"
 controller_port: 8477
 log_level: "INFO"
-log_file: "rdp2tcp-cli.log"
+log_file: null
 
 tunnels:
-  - name: "web-server"
+  - name: "socks-proxy"
+    type: "socks5"
+    local_host: "127.0.0.1"
+    local_port: 19050
+    enabled: false
+
+  - name: "web-forward"
     type: "tcp"
     local_host: "127.0.0.1"
     local_port: 8080
-    remote_host: "192.168.1.100"
+    remote_host: "192.0.2.10"
     remote_port: 80
-    enabled: true
-    compression: "gzip"
-    bandwidth_limit: 1048576  # 1MB/s
-
-  - name: "ssh-access"
-    type: "reverse"
-    local_host: "127.0.0.1"
-    local_port: 2222
-    remote_host: "192.168.1.100"
-    remote_port: 22
-    enabled: true
-    compression: "lz4"
+    enabled: false
 ```
 
-## 2. Compression Support
+Create all enabled entries:
 
-RDP2TCP now supports data compression to reduce bandwidth usage and improve performance.
-
-### Supported Algorithms
-
-- **GZIP**: High compression ratio, slower compression
-- **LZ4**: Fast compression/decompression, lower compression ratio
-- **None**: No compression (default)
-
-### Protocol Changes
-
-New compression command added to the protocol:
-
-```c
-#define R2TCMD_COMPRESS 0x06
-
-typedef struct _r2tmsg_compress {
-    unsigned char cmd;      // R2TCMD_COMPRESS
-    unsigned char id;       // tunnel identifier
-    unsigned char algorithm; // compression algorithm
-    unsigned char level;    // compression level
-    unsigned int original_size; // original data size
-    char data[0];          // compressed data
-} r2tmsg_compress_t;
+```sh
+python3 tools/rdp2tcp-cli.py --config tools/config.yaml config load
 ```
 
-### Compression Levels
+Cleanup commands operate only on listener rows (`tunsrv`, `s5srv`, and
+`rtunsrv`), never per-connection client rows:
 
-- **GZIP**: 1-9 (1=fast, 9=best compression)
-- **LZ4**: 1-16 (1=fast, 16=best compression)
+```sh
+# Close every listener reported by the controller
+python3 tools/rdp2tcp-cli.py cleanup all
 
-### Usage
+# Close enabled listeners that match entries in the loaded config
+python3 tools/rdp2tcp-cli.py --config tools/config.yaml cleanup config
 
-Compression can be enabled per tunnel:
-
-```bash
-# Create tunnel with gzip compression
-rdp2tcp-cli tunnel create --name compressed-tunnel \
-  --type tcp --local 8080 --remote 80 \
-  --compression gzip
-
-# Create tunnel with LZ4 compression
-rdp2tcp-cli tunnel create --name fast-tunnel \
-  --type tcp --local 8081 --remote 80 \
-  --compression lz4
+# Close selected configured names; host and port must match the config
+python3 tools/rdp2tcp-cli.py --config tools/config.yaml cleanup specific \
+  --tunnels web-forward socks-proxy
 ```
 
-### Automatic Compression
+Tunnel names are local configuration labels. They are not sent to, stored by,
+or returned from the native controller.
 
-The system automatically determines if compression would be beneficial:
+Save the currently loaded/default configuration model as YAML or JSON:
 
-- Skips compression for small data (< 64 bytes)
-- Analyzes data patterns to avoid compressing already compressed data
-- Provides compression statistics in logs
-
-## 3. Advanced Logging System
-
-A comprehensive logging system with structured logging, multiple output formats, and log rotation.
-
-### Features
-
-- **Multiple Log Levels**: DEBUG, INFO, WARN, ERROR, AUDIT
-- **Log Categories**: GENERAL, NETWORK, TUNNEL, CHANNEL, SECURITY, PERFORMANCE
-- **Output Formats**: Text, JSON, Syslog
-- **Destinations**: Stdout, Stderr, File, Syslog
-- **Log Rotation**: Automatic file rotation with size limits
-- **Thread Safety**: Thread-safe logging with mutex protection
-- **Color Output**: Colored output for terminal display
-
-### Log Levels
-
-```c
-typedef enum {
-    LOG_LEVEL_DEBUG = 0,   // Detailed debugging information
-    LOG_LEVEL_INFO,        // General information
-    LOG_LEVEL_WARN,        // Warning messages
-    LOG_LEVEL_ERROR,       // Error messages
-    LOG_LEVEL_AUDIT,       // Security audit events
-    LOG_LEVEL_MAX
-} log_level_t;
+```sh
+python3 tools/rdp2tcp-cli.py \
+  --config tools/config.yaml \
+  config save --output tools/config.local.yaml
 ```
 
-### Log Categories
+`config save` does not discover active tunnels from the controller.
 
-```c
-typedef enum {
-    LOG_CAT_GENERAL = 0,   // General application events
-    LOG_CAT_NETWORK,       // Network-related events
-    LOG_CAT_TUNNEL,        // Tunnel-specific events
-    LOG_CAT_CHANNEL,       // RDP channel events
-    LOG_CAT_SECURITY,      // Security-related events
-    LOG_CAT_PERFORMANCE,   // Performance metrics
-    LOG_CAT_MAX
-} log_category_t;
+## Chaining two RDP sessions
+
+No protocol change is required to carry a second-hop SOCKS connection through
+a first-hop TCP forward:
+
+```text
+browser on local computer
+    -> local SOCKS5 127.0.0.1:19050
+    -> first RDP channel to box A
+    -> box A second-hop SOCKS listener 127.0.0.1:19051
+    -> second RDP channel to box B
+    -> internal destination, connected from box B
 ```
 
-### Usage Examples
+Box A runs both halves needed for the chain:
 
-#### Basic Logging
+- `rdp2tcp.exe` is the server for the local-computer-to-box-A session.
+- `client/rdp2tcp` is the client helper for the box-A-to-box-B session.
 
-```c
-#include "logger.h"
+### Configure the second hop on box A
 
-// Initialize logger
-logger_config_t config = {
-    .level = LOG_LEVEL_INFO,
-    .format = LOG_FORMAT_TEXT,
-    .destination = LOG_DEST_STDOUT,
-    .enable_timestamp = 1,
-    .enable_color = 1
-};
-logger_init(&config);
+After starting a compatible RDP client/helper from box A to box B and running
+`rdp2tcp.exe` on box B:
 
-// Log messages
-LOG_INFO(LOG_CAT_GENERAL, "Application started");
-LOG_WARN(LOG_CAT_NETWORK, "Connection timeout");
-LOG_ERROR(LOG_CAT_TUNNEL, "Tunnel creation failed");
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name hop2-socks \
+  --type socks5 \
+  --local-host 127.0.0.1 \
+  --local-port 19051
 ```
 
-#### Structured Logging
+The SOCKS listener is on box A, but each requested connection originates from
+box B.
 
-```c
-// Log with structured data
-log_structured(LOG_LEVEL_INFO, LOG_CAT_TUNNEL, 
-               "tunnel.c", "tunnel_create", 123,
-               "tunnel-01", "compression=gzip",
-               "Tunnel created successfully");
+### Carry that SOCKS listener through the first hop
 
-// Log tunnel-specific events
-log_tunnel(LOG_LEVEL_INFO, "tunnel-01", "Data transfer started");
+On the local computer:
 
-// Log security events
-log_security(LOG_LEVEL_WARN, "auth_failure", "192.168.1.100",
-             "invalid_credentials", "Authentication failed");
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name chained-socks \
+  --type tcp \
+  --local-host 127.0.0.1 \
+  --local-port 19050 \
+  --remote-host 127.0.0.1 \
+  --remote-port 19051
 ```
 
-#### Performance Logging
+Configure the browser for SOCKS5 at `127.0.0.1:19050` and enable proxy-side
+DNS. Every byte crosses both RDP virtual channels, so expect additional latency
+and dependence on both sessions remaining connected.
 
-```c
-// Log performance metrics
-log_performance("bandwidth", 1024.5, "KB/s", "tunnel-01");
-log_performance("latency", 45.2, "ms", "tunnel-01");
+### Platform limitation
+
+The current client helper is POSIX code that communicates with a compatible
+FreeRDP/rdesktop out-of-process channel. It is not a Microsoft MSTSC plugin.
+Therefore:
+
+- No extension is needed if box A can run the compatible client helper for its
+  RDP session to box B.
+- If box A is Windows and must open the second session with `mstsc.exe`, the
+  project needs a Windows RDP client virtual-channel plugin or a native FreeRDP
+  client-side integration.
+- If box A can already reach the internal destination, use a first-hop SOCKS5
+  listener instead of chaining.
+
+## Security and behavior notes
+
+- Keep the controller, SOCKS listeners, and tunnel listeners on `127.0.0.1`
+  unless exposure is deliberate and independently protected.
+- The controller protocol and SOCKS5 implementation have no authentication.
+- SOCKS5 supports TCP `CONNECT`; it does not support UDP association, SOCKS
+  `BIND`, or authentication methods.
+- Process tunnels are remote command execution functionality. Treat access to
+  the local listener as privileged.
+- Controller operations have a default ten-second socket timeout.
+- Loss of the RDP channel closes or interrupts dependent connections.
+
+## Developer-only scaffolding
+
+`common/compress.c`, `common/compress.h`, and `R2TCMD_COMPRESS` define proposed
+compression support. The normal client and server Makefiles do not link the
+compression object, and both command handlers currently ignore compression
+messages. Compression must not be described or treated as active.
+
+Similarly, `common/logger.c` provides an advanced structured C logger, but the
+normal client/server binaries neither link nor initialize it. The enhanced
+Python CLI uses Python's standard logging module; that is separate from the C
+logger implementation.
+
+Integration test scripts can create listeners, processes, or network traffic.
+Those guarded by `tools/testutil.py` require explicit opt-in:
+
+```sh
+RDP2TCP_RUN_INTEGRATION=1 python3 tools/test-socks5.py
+# or
+python3 tools/test-socks5.py --run
 ```
-
-#### Audit Logging
-
-```c
-// Log audit events
-log_audit("admin", "tunnel_create", "tunnel-01", "success", 
-          "Tunnel created via CLI");
-log_audit("user1", "tunnel_delete", "tunnel-02", "failure", 
-          "Permission denied");
-```
-
-### Configuration
-
-```c
-logger_config_t config = {
-    .level = LOG_LEVEL_INFO,
-    .format = LOG_FORMAT_JSON,
-    .destination = LOG_DEST_FILE,
-    .filename = "rdp2tcp.log",
-    .max_file_size = 10 * 1024 * 1024,  // 10MB
-    .max_files = 5,                      // Keep 5 backup files
-    .enable_timestamp = 1,
-    .enable_thread_id = 1,
-    .enable_color = 0                    // Disable for file output
-};
-```
-
-### Output Formats
-
-#### Text Format
-```
-2024-01-15 14:30:25 [12345] [INFO] [TUNNEL] Tunnel created successfully
-2024-01-15 14:30:26 [12345] [WARN] [NETWORK] Connection timeout
-```
-
-#### JSON Format
-```json
-{
-  "timestamp": "2024-01-15 14:30:25",
-  "level": "INFO",
-  "category": "TUNNEL",
-  "module": "tunnel.c",
-  "function": "tunnel_create",
-  "line": 123,
-  "message": "Tunnel created successfully",
-  "tunnel_id": "tunnel-01",
-  "details": "compression=gzip",
-  "thread_id": "12345"
-}
-```
-
-### Log Rotation
-
-The logging system automatically rotates log files when they reach the configured size limit:
-
-- Current log file: `rdp2tcp.log`
-- Backup files: `rdp2tcp.log.1`, `rdp2tcp.log.2`, etc.
-- Oldest backup file is deleted when max_files is reached
-
-## Building with New Features
-
-### Dependencies
-
-```bash
-# Install required packages
-sudo apt-get install libz-dev liblz4-dev python3-yaml
-
-# For development
-sudo apt-get install python3-dev
-```
-
-### Compilation
-
-```bash
-# Build with compression support
-make CFLAGS="-DHAVE_LZ4" LDFLAGS="-lz -llz4"
-
-# Build without LZ4 (gzip only)
-make CFLAGS="" LDFLAGS="-lz"
-```
-
-### Python Dependencies
-
-```bash
-# Install Python dependencies for enhanced CLI
-pip3 install pyyaml
-```
-
-## Integration
-
-These features integrate seamlessly with the existing RDP2TCP codebase:
-
-1. **Backward Compatibility**: All new features are optional and don't break existing functionality
-2. **Gradual Migration**: Can be enabled per tunnel or globally
-3. **Performance Monitoring**: Built-in metrics for compression effectiveness
-4. **Security**: Audit logging for compliance requirements
-
-## Future Enhancements
-
-Planned improvements for these features:
-
-1. **Compression**: Add more algorithms (Zstandard, Brotli)
-2. **Logging**: Add log aggregation and analysis tools
-3. **CLI**: Add interactive mode and web-based management interface
-4. **Performance**: Add bandwidth throttling and QoS features

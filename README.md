@@ -1,206 +1,359 @@
-# rdp2tcp 0.1 (open tcp tunnel through rdp)
+# rdp2tcp
 
- ![Diagram](http://i.imgur.com/7xTFXeq.png)
+rdp2tcp carries TCP connections through an existing Remote Desktop Protocol
+(RDP) virtual channel. It is useful when an RDP session is available but a
+separate network tunnel is not.
 
-## clone
-```sh
-git clone https://github.com/jnqpblc/rdp2tcp.git [RDP2TCP FOLDER]
-cd [RDP2TCP FOLDER]
+The project has two native components:
+
+- `client/rdp2tcp` runs beside the RDP client on the initiating host. It also
+  exposes a local controller, normally on `127.0.0.1:8477`.
+- `server/rdp2tcp.exe` runs inside the Windows RDP session and performs the
+  remote connection, bind, or process operation.
+
+```text
+application -> local listener -> client/rdp2tcp == RDP channel == rdp2tcp.exe -> target
 ```
 
-## build
-```sh
-make (does both by default)
-or
-make client
-make server
-```
-#### on local host linux
+## Supported functionality
+
+- TCP forwarding: listen on the RDP client side and connect from Windows.
+- Reverse TCP forwarding: listen on Windows and connect back on the RDP client
+  side.
+- Process forwarding: connect a local TCP listener to a process running in the
+  Windows session.
+- SOCKS5 TCP `CONNECT`, including IPv4, IPv6, and domain-name destinations.
+- A legacy controller script and a structured YAML/JSON-aware CLI.
+
+rdp2tcp transports TCP only. SOCKS authentication, UDP forwarding, bandwidth
+limiting, and data compression are not implemented. See
+[`tools/FEATURES-CLI.md`](tools/FEATURES-CLI.md) for the current CLI feature
+matrix and limitations.
+
+## Requirements
+
+The initiating host needs:
+
+- A C compiler for the POSIX client.
+- A compatible RDP client capable of attaching the out-of-process rdp2tcp
+  virtual-channel helper. The repository documents patched `rdesktop` and a
+  FreeRDP integration using `/rdp2tcp:`.
+- Python 3. The enhanced CLI additionally requires PyYAML.
+
+Building the Windows server on a POSIX host requires the 32-bit MinGW-w64
+compiler named `i686-w64-mingw32-gcc` by the current Makefile. The compiler can
+be changed in `server/Makefile.mingw32` if necessary.
+
+## Build
+
+From the repository root:
 
 ```sh
-sudo apt install xautomation
+make client       # build client/rdp2tcp
+make server       # cross-compile server/rdp2tcp.exe
+make              # build both
+```
+
+The standard client/server build does not require zlib or LZ4. Compression
+source scaffolding exists under `common/`, but it is not connected to the data
+path or linked into the normal binaries.
+
+## Start a session
+
+### 1. Start the client-side channel helper
+
+Use an absolute path. The following is the FreeRDP form used by this project;
+the option must be available in your FreeRDP build:
+
+```sh
+xfreerdp /u:USER /v:WINDOWS_HOST \
+  /rdp2tcp:/absolute/path/to/rdp2tcp/client/rdp2tcp
+```
+
+Avoid putting a password directly on the command line. With the historical
+out-of-process `rdesktop` patch, the equivalent form is:
+
+```sh
+rdesktop -r addin:rdp2tcp:/absolute/path/to/rdp2tcp/client/rdp2tcp WINDOWS_HOST
+```
+
+The helper accepts an optional controller host and port:
+
+```text
+rdp2tcp [CONTROLLER_HOST [CONTROLLER_PORT]]
+```
+
+The defaults are `127.0.0.1` and `8477`. If an out-of-process launcher passes
+arguments, provide both values when changing the port; for example,
+`127.0.0.1 8478`.
+
+### 2. Run the Windows server
+
+Transfer `server/rdp2tcp.exe` into the Windows session and run it from `cmd.exe`:
+
+```bat
+rdp2tcp.exe
+```
+
+Administrator privileges are not normally required. The optional argument is a
+custom virtual-channel name:
+
+```bat
+rdp2tcp.exe rdp2tcp-2
+```
+
+The name must match the channel configured by the RDP client. Run a separate
+server process for each custom channel.
+
+If normal file transfer is unavailable, these helpers generate a PowerShell
+payload or an `xte` typing script:
+
+```sh
 python3 tools/exe_to_ps1.py -i server/rdp2tcp.exe
-or
 python3 tools/exe_to_xte_script_ps1.py -i server/rdp2tcp.exe
-
-xfreerdp /u:[USER] /p:[PASSWORD] /v:[HOST] /rdp2tcp:[RDP2TCP FOLDER]/client/rdp2tcp
 ```
 
-#### on remote host windows 
+The generated files may contain the full executable and are intentionally
+ignored by Git. `xte` comes from `xautomation`.
 
-Upload [RDP2TCP FOLDER]/server/rdp2tcp.exe file to remote host
+### 3. Wait for the channel
 
-open cmd and run rdp2tcp.exe (it is not necessary to run with administrator privilege)
+The initiating terminal should report:
 
-### Controller:
+```text
+virtual channel connected
+```
 
-after you see the message "virtual channel connected" on your terminal. you can perform port forwarding using the tool: [RDP2TCP FOLDER]/tools/rdp2tcp.py
+The controller is then available on `127.0.0.1:8477` by default.
 
-> ./tools/rdp2tcp.py add forward [local addr] [local port] [remote addr] [remote port]
+## Enhanced CLI quick start
 
+Run the CLI from the repository root:
 
 ```sh
-./tools/rdp2tcp.py help # for more info
-./tools/rdp2tcp.py add forward 127.0.0.1 10001 127.0.0.1 8000
-curl 127.0.0.1:10001
+python3 tools/rdp2tcp-cli.py --help
 ```
 
+### Forward a local port to the Windows side
 
-#### if you have problems in the build with 32-bit compiler try:
+This listens locally on `127.0.0.1:10001`. Connections are carried through RDP,
+then `rdp2tcp.exe` connects to `127.0.0.1:8000` as seen from Windows.
 
 ```sh
-wget http://archive.ubuntu.com/ubuntu/pool/universe/m/mingw32/mingw32_4.2.1.dfsg-2ubuntu1_amd64.deb;
-wget http://archive.ubuntu.com/ubuntu/pool/universe/m/mingw32-binutils/mingw32-binutils_2.20-0.2ubuntu1_amd64.deb;
-wget http://archive.ubuntu.com/ubuntu/pool/universe/m/mingw32-runtime/mingw32-runtime_3.15.2-0ubuntu1_all.deb;
-sudo dpkg -i mingw32*.deb
-sudo apt-get install -f
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name web \
+  --type tcp \
+  --local-host 127.0.0.1 \
+  --local-port 10001 \
+  --remote-host 127.0.0.1 \
+  --remote-port 8000
+
+curl http://127.0.0.1:10001/
 ```
 
-read more: http://rdp2tcp.sourceforge.net/
+### Start a SOCKS5 listener
 
-### how this works:
-<pre>
-rdp2tcp is a tunneling tool on top of remote desktop protocol (RDP).
-It uses RDP virtual channel capabilities to multiplex several ports
-forwarding over an already established rdesktop session.
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name socks \
+  --type socks5 \
+  --local-host 127.0.0.1 \
+  --local-port 19050
+```
 
-Available features:
- - tcp port forwarding
- - reverse tcp port forwarding
- - process stdin/out forwarding
- - SOCKS5 minimal support
+Configure the application for SOCKS5 at `127.0.0.1:19050`. Use proxy-side DNS
+resolution (often called `SOCKS5 hostname`, `socks5h`, or “Proxy DNS when using
+SOCKS v5”) when names are resolvable only from the Windows network.
 
-The code is splitted into 2 parts:
- - the client running on the rdesktop client side
- - the server running on the Terminal Server side
+For example:
 
-Once both rdp2tcp client and server are running, tunnels management is
-performed by the controller (on client side). The controller typically
-listen on localhost (port 8477) waiting for new tunnel registrations.
+```sh
+curl --proxy socks5h://127.0.0.1:19050 https://example.com/
+```
 
+### Create a reverse tunnel
 
--[ client (rdesktop side) ]--------------------
+This asks Windows to listen on `127.0.0.1:2222`; accepted connections are sent
+through RDP to `127.0.0.1:22` on the initiating side:
 
-First of all, rdesktop must be compiled with OOP patch (see INSTALL).
-The OOP patch comes with a additional rdesktop command line option.
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name reverse-ssh \
+  --type reverse \
+  --local-host 127.0.0.1 \
+  --local-port 22 \
+  --remote-host 127.0.0.1 \
+  --remote-port 2222
+```
 
-  -r addin:NAME:HANDLER[:OPT1[:OPTN]]
+### Create a process tunnel
 
-  NAME:    the name of the RDP virtual channel
-  HANDLER: the path of the executable which handle
-           the virtual channel.
-  OPT:     argument passed to HANDLER executable
+The following listens locally and attaches connections to `cmd.exe` in the
+Windows session:
 
-The rdp2tcp client must be initialized when the rdesktop client starts.
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name command-shell \
+  --type process \
+  --local-host 127.0.0.1 \
+  --local-port 4444 \
+  --command cmd.exe
+```
 
-  rdesktop -r addin:rdp2tcp:/path/to/rdp2tcp <ip>
+The convenience command performs the same type of operation and can launch a
+local Telnet client:
 
-rdp2tcp client usage:
+```sh
+python3 tools/rdp2tcp-cli.py sh --local-port 4444 --shell-command cmd.exe
+python3 tools/rdp2tcp-cli.py sh --local-port 4444 --shell-command cmd.exe --connect
+```
 
-  rdp2tcp [[HOST] PORT]
+Process tunnels execute commands under the account running `rdp2tcp.exe`; use
+them only on systems you are authorized to administer.
 
-  HOST: rdp2tcp controller hostname or IP address (default is 127.0.0.1).
-  PORT: rdp2tcp controller port (default is 8477).
+### List and delete tunnels
 
-Several instances of rdp2tcp client can be run on a single rdesktop session:
+```sh
+python3 tools/rdp2tcp-cli.py tunnel list
+python3 tools/rdp2tcp-cli.py tunnel list --format json
+python3 tools/rdp2tcp-cli.py tunnel delete \
+  --local-host 127.0.0.1 --local-port 10001
+```
 
-  rdesktop -r addin:rdp2tcp-1:/path/to/rdp2tcp:8477 \
-           -r addin:rdp2tcp-2:/path/to/rdp2tcp:8478 <ip>
+## Configuration files
 
-After rdesktop is started with rdp2tcp channel configured, port forwarding
-can be configured by connecting to the controller and sending commands.
-All commands are ASCII and ends with a CR "\n".
+Copy the sanitized example and edit the private copy:
 
-  * List rdp2tcp managed sockets:
-      "l\n"
+```sh
+cp tools/config.example.yaml tools/config.yaml
+python3 tools/rdp2tcp-cli.py --config tools/config.yaml config load
+```
 
-  * Remove tunnel  
-      "- LHOST LPORT\n"
+Only entries with `enabled: true` are created. `tools/config.yaml` is ignored by
+Git because it may contain private addresses or commands; keep
+`tools/config.example.yaml` sanitized.
 
-      LHOST: tunnel local host
-      LPORT: tunnel local port
+Configuration may be YAML or JSON. Global `--host`, `--port`, and `--log-level`
+options override values loaded from the file and must appear before the
+subcommand.
 
-  * Start SOCKS5 proxy
-      "s LHOST LPORT\n"
+## Chaining two RDP sessions
 
-      LHOST: proxy local host
-      LPORT: proxy local port
+A TCP forward can carry a second SOCKS5 connection unchanged. This allows a
+browser on the local computer to reach a site that is accessible only from a
+second RDP host:
 
-  * stdin/stdout forwarding tunnel (bind on rdesktop)
-      "x LHOST LPORT CMD\n"
+```text
+local browser
+    -> SOCKS5 127.0.0.1:19050
+    -> first rdp2tcp session (local -> box A)
+    -> box A 127.0.0.1:19051
+    -> second rdp2tcp SOCKS5 session (box A -> box B)
+    -> internal website, connected from box B
+```
 
-      LHOST: local listener host
-      LPORT: local listener port
-      CMD:   command line to execute on Terminal Server host
+Box A has two roles: it runs `rdp2tcp.exe` for the first session and the
+client-side helper/controller for the second session.
 
-  * TCP forwarding tunnel (bind on rdesktop)
-      "t LHOST LPORT RHOST RPORT\n"
+### On box A
 
-      LHOST: local listener host
-      LPORT: local listener port
-      RHOST: remote target host
-      RPORT: remote target port
+Establish the RDP session from box A to box B with the rdp2tcp client helper,
+run `rdp2tcp.exe` on box B, and create the second-hop SOCKS listener:
 
-  * TCP reverse-connect tunnel (bind on Terminal Server)
-      "r LHOST LPORT RHOST RPORT\n"
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name hop2-socks \
+  --type socks5 \
+  --local-host 127.0.0.1 \
+  --local-port 19051
+```
 
-      LHOST: local target host
-      LPORT: local target port
-      RHOST: remote listener host
-      RPORT: remote listener port
+### On the local computer
 
-rdp2tcp.py (located in "tools" folder) can be used to manage tunnels with
-simple command lines.
-ex: "rdp2tcp.py add forward LHOST LPORT RHOST RPORT"
+Forward a local port through the first RDP session to box A's second-hop SOCKS
+listener:
 
+```sh
+python3 tools/rdp2tcp-cli.py tunnel create \
+  --name chained-socks \
+  --type tcp \
+  --local-host 127.0.0.1 \
+  --local-port 19050 \
+  --remote-host 127.0.0.1 \
+  --remote-port 19051
+```
 
--[ server (Terminal Server side) ]-------------
+Configure the browser for SOCKS5 at `127.0.0.1:19050` with proxy-side DNS.
 
-Before starting the rdp2tcp server, you must be logged on the Terminal Server
-with one or more rdp2tcp clients attached to rdesktop.
+This works without a protocol change only when box A can run a compatible
+client-side helper for its session to box B. The current client is POSIX code
+connected to an out-of-process FreeRDP/rdesktop channel. It is not an MSTSC
+plugin. If box A is Windows and the second session must use `mstsc.exe`, a
+Windows RDP client virtual-channel plugin or a native FreeRDP client extension
+is required.
 
-The rdp2tcp server won't magically appear on the Terminal Server. So the
-rdp2tcp.exe executable must be first uploaded.
+If box A can already reach the destination directly, a SOCKS listener on the
+first session is sufficient and the second hop is unnecessary.
 
-rdp2tcp.exe doesn't require to be run with a privileged Windows account.
+## Tunnel direction reference
 
-Terminal Server policy may block file sharing through the RDP session.
-Thus you may have to find a way to upload the .exe binary on the remote
-system. The binary can be uploaded by scripting the TS input.
+| Type | Listener | Final connection or action |
+| --- | --- | --- |
+| `tcp` | RDP client side (`local_host:local_port`) | Windows connects to `remote_host:remote_port` |
+| `reverse` | Windows (`remote_host:remote_port`) | RDP client side connects to `local_host:local_port` |
+| `process` | RDP client side | Windows starts `command` and forwards stdin/stdout |
+| `socks5` | RDP client side | Windows makes each SOCKS5 TCP connection |
 
-Uploading binary data to the server can be automated by encoding data to
-key stroke sequences that will be given to rdesktop as keyboard input.
+The raw controller protocol uses newline-terminated ASCII commands:
 
-The rdpupload script (located in "tools" folder) generates a X11 script.
-xte (http://hoopajoo.net/projects/xautomation.html) run the X11 script.
+```text
+l
+t LHOST LPORT RHOST RPORT
+r LHOST LPORT RHOST RPORT
+x LHOST LPORT COMMAND
+s LHOST LPORT
+- LHOST LPORT
+```
 
-  1) start rdesktop with rdp2tcp client
-  2) tools/rdpupload -x -f vb server/rdp2tcp.exe | xte"
-  3) focus on the rdesktop window within 5 seconds
-  4) xte will feed rdesktop with keyboard input. focused window must
-     not change or you may get some trouble :)
-  5) run the Visual Basic script uploaded by xte.
-  6) run rdp2tcp server by using the executable generated by the
-     Visual Basic script.
+The simpler legacy wrapper remains available:
 
+```sh
+python3 tools/rdp2tcp.py info
+python3 tools/rdp2tcp.py add forward 127.0.0.1 10001 127.0.0.1 8000
+python3 tools/rdp2tcp.py add socks5 127.0.0.1 19050
+python3 tools/rdp2tcp.py del 127.0.0.1 10001
+```
 
--[ dev ]---------------------------------------
+## Security and operational notes
 
- - edit Makefile / enable -DDEBUG
- - use client/memcheck.sh to use valgrind as a RDP channel wrapper
- - doxygen can be used to generate the project documentation
-     "doxygen Doxyfile-client" --> docs/client/html
-     "doxygen Doxyfile-server" --> docs/server/html
- - export DEBUG (-1 to 2) environment variable to print debug statements
- - export TRACE (00 to ff) environment variable to print function traces
+- Bind the controller and tunnel listeners to `127.0.0.1` unless remote access
+  is explicitly required and protected by another control.
+- The controller protocol and SOCKS5 listener do not authenticate clients.
+- A SOCKS listener exposed on a non-loopback address can become an open proxy.
+- RDP session loss interrupts every tunnel carried by that session; a chained
+  tunnel depends on both sessions.
+- Chaining adds latency and traverses both virtual channels for every byte.
+- SOCKS5 supports TCP `CONNECT` only. UDP-based traffic such as QUIC/HTTP/3 is
+  not tunneled; applications may fall back to TCP.
+- Tunnel names are CLI/configuration labels, not persistent controller IDs.
+- The CLI's `monitor --tunnel-id` option is currently accepted but does not
+  filter the polling output.
 
-	bit 0: I/O buffer management
-       1: network socket  
-       2: RDP virtual channel
-       3: events loop
-       4: process 
-       5: rdp2tcp controller
-       6: tunnel management
-       7: SOCKS5 protocol
+## Development
 
-</pre>
+- Uncomment `-DDEBUG` in the relevant Makefile to build debug logging.
+- Set `DEBUG` and `TRACE` environment variables to control the legacy debug
+  output.
+- `client/memcheck.sh` runs the client under Valgrind from the `client/`
+  directory.
+- Doxygen configuration is provided in `Doxyfile-client` and
+  `Doxyfile-server`.
+- Live integration scripts under `tools/test-*.py` require an RDP session and
+  controller. The scripts that use `tools/testutil.py` require explicit opt-in
+  with `RDP2TCP_RUN_INTEGRATION=1` or `--run`; inspect other diagnostic scripts
+  before running them against an active session.
+
+## License
+
+rdp2tcp is distributed under the GNU General Public License version 3 or later.
+See [`COPYING`](COPYING).
